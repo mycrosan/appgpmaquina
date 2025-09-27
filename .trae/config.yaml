@@ -1,0 +1,23 @@
+rules:
+  - flutter_senior_dev.md
+
+project:
+  name: "GP Máquina App"
+  description: "Aplicação Flutter para gerenciamento de máquinas seguindo princípios de desenvolvimento sênior"
+  framework: "Flutter 3"
+  architecture: "Clean Architecture + DDD"
+  state_management: "BLoC"
+
+guidelines:
+  - "SEMPRE usar FVM (Flutter Version Management) para gerenciar versões"
+  - "Usar 'fvm flutter' ao invés de 'flutter' em todos os comandos"
+  - "Seguir Clean Architecture com camadas bem definidas"
+  - "Aplicar DDD quando fizer sentido"
+  - "Usar BLoC para gerenciamento de estado"
+  - "Manter código escalável e preparado para crescimento"
+  - "Implementar testes automatizados abrangentes"
+  - "Documentar adequadamente o código e arquitetura"
+  - "Configurar CI/CD completo com FVM"
+  - "Tratar erros de forma robusta e resiliente"
+  - "Otimizar performance e consumo de recursos"
+  - "Escrever código didático e facilitar code reviews"

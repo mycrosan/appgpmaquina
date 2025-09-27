@@ -1,0 +1,67 @@
+Entendi 👍. Você quer um **prompt para o TRAE** (provavelmente uma IA de geração de código/app) que descreva toda a sua aplicação em Flutter 3, com autenticação biométrica, integração com banco e controle de válvula via Tasmota.
+
+Aqui está um prompt detalhado que você pode usar direto no TRAE:
+
+---
+
+## Prompt para TRAE
+
+Crie uma aplicação mobile em **Flutter 3** com as seguintes especificações:
+
+### Autenticação
+
+* Login automático via **biometria** (Face ID, digital ou método padrão do Android).
+* Usuários cadastrados na tabela `usuario` do banco MySQL já existente.
+
+### Funcionalidades principais
+
+1. **Tela de Login**
+
+   * Autenticação biométrica.
+   * Caso biometria não esteja disponível, permitir login manual com usuário/senha.
+
+2. **Tela Principal**
+
+   * Campo para inserir o **código da carcaça** (etiqueta com 6 números).
+   * Botão de busca que consulta a tabela `carcaca` no banco.
+   * Validação: verificar se a matriz registrada para a máquina atual (configuração local) corresponde à matriz da carcaça.
+
+     * Se diferente → mostrar mensagem **“Máquina errada”** em destaque.
+
+3. **Tela de Configuração da Máquina**
+
+   * Permitir registrar qual **matriz** está aceita para a máquina naquele momento (vinculada ao usuário/dispositivo).
+   * Usar tabela `matriz` para buscar e registrar.
+
+4. **Fluxo de Injeção de Ar**
+
+   * Quando a carcaça for validada, mostrar detalhes da matriz vinculada ao pneu.
+   * Exibir botão **“Injetar ar”**.
+   * Ao clicar:
+
+     * Enviar comando REST HTTP para o **módulo Sonoff Tasmota** (`cm?cmnd=Power%20On`) para ligar a energia da válvula solenoide.
+     * Abrir nova tela com **timer**.
+
+       * O tempo virá da **regra** associada ao pneu (tabela `regra.tempo`).
+       * Exibir contador regressivo.
+
+5. **Finalização**
+
+   * Quando o tempo terminar:
+
+     * Mostrar mensagem **“Pronto”** piscando.
+     * Enviar comando REST para o Sonoff Tasmota (`cm?cmnd=Power%20Off`) desligando a válvula.
+
+### Banco de Dados (MySQL já existente)
+
+* Utilizar as tabelas já definidas (`carcaca`, `matriz`, `regra`, `usuario`, etc.).
+* O app deve se conectar a uma API (em Node, Spring Boot ou outra linguagem) que já expõe esses dados via REST.
+
+### Requisitos técnicos
+
+* Flutter 3 (null safety).
+* State management: **BLoC ou Riverpod**.
+* Integração biométrica (package: `local_auth`).
+* Integração com API REST para comunicação com banco e Sonoff Tasmota.
+* Estrutura seguindo **Clean Architecture**.
+* Configurações salvas localmente no dispositivo com `shared_preferences` (para a matriz da máquina).

@@ -1,0 +1,69 @@
+Crie uma aplicação mobile em Flutter 3 (com null safety) que siga os princípios de um desenvolvedor Sênior, atendendo aos seguintes requisitos:
+
+1. Arquitetura
+
+Utilize Clean Architecture com camadas bem definidas (presentation, domain, data).
+
+Aplique DDD (Domain-Driven Design) sempre que fizer sentido.
+
+Escolha BLoC para gerenciamento de estado (com justificativa arquitetural clara).
+
+O código deve ser escalável, preparado para crescimento do projeto e de times.
+
+2. Testes Automatizados
+
+Crie testes unitários para classes isoladas.
+
+Crie widget tests para telas e fluxos principais.
+
+Use mocking/stubs para simular APIs e banco de dados.
+
+Assegure uma boa cobertura de testes para prevenir regressões.
+
+3. Documentação
+
+Inclua um README completo com: setup do projeto, padrões de arquitetura, convenções de código.
+
+Adicione diagramas de arquitetura (dependências, fluxos principais).
+
+Forneça instruções claras para onboarding de novos devs.
+
+4. CI/CD
+
+Configure pipeline automatizada (GitHub Actions ou GitLab CI).
+
+Pipeline deve incluir:
+
+Execução dos testes
+
+Análise de qualidade de código (lint, coverage)
+
+Build automatizado para Android e iOS
+
+Deploy automatizado (Firebase App Distribution ou lojas, se possível)
+
+5. Tratamento de Erros e Resiliência
+
+Crie camadas de exceções customizadas para diferenciar erros de rede, servidor, validação, etc.
+
+Adicione suporte a offline mode e cache inteligente.
+
+Integre monitoramento com Sentry ou Firebase Crashlytics.
+
+Melhore a UX em estados de erro: skeletons, retries, mensagens amigáveis.
+
+6. Performance e Otimização
+
+Use o Flutter DevTools para identificar gargalos.
+
+Implemente boas práticas em listas grandes (ListView.builder, Slivers, lazy load).
+
+Garanta baixo consumo de memória, bateria e rede.
+
+7. Mentoria e Liderança Técnica
+
+O código deve ser escrito de forma didática, com comentários explicativos.
+
+Estruture o repositório de modo que facilite code reviews.
+
+Inclua recomendações de boas práticas e decisões técnicas no README.
