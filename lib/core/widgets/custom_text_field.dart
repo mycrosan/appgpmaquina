@@ -89,8 +89,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
     final borderColor = hasError
         ? AppColors.error
         : _isFocused
-            ? AppColors.borderFocus
-            : AppColors.border;
+        ? AppColors.borderFocus
+        : AppColors.border;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,11 +132,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
                     color: hasError
                         ? AppColors.error
                         : _isFocused
-                            ? AppColors.primary
-                            : AppColors.textSecondary,
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
                   )
                 : null,
             suffixIcon: widget.suffixIcon,
+            isCollapsed: true, // Evita que o input expanda demais
             filled: true,
             fillColor: widget.enabled
                 ? AppColors.surface
@@ -170,6 +171,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
               vertical: 12,
             ),
             counterStyle: AppTextStyles.caption,
+            // Garantir que o texto se ajuste ao espaço disponível
+            isDense: true,
+            // Configurar o estilo do texto de entrada para evitar overflow
+            hintMaxLines: 1,
           ),
         ),
         if (widget.helperText != null || widget.errorText != null) ...[

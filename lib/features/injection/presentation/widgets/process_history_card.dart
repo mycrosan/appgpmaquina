@@ -8,11 +8,7 @@ class ProcessHistoryCard extends StatelessWidget {
   final ProcessoInjecao processo;
   final VoidCallback? onTap;
 
-  const ProcessHistoryCard({
-    super.key,
-    required this.processo,
-    this.onTap,
-  });
+  const ProcessHistoryCard({super.key, required this.processo, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +110,8 @@ class ProcessHistoryCard extends StatelessWidget {
             ),
 
             // Observações (se houver)
-            if (processo.observacoes != null && processo.observacoes!.isNotEmpty) ...[
+            if (processo.observacoes != null &&
+                processo.observacoes!.isNotEmpty) ...[
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -133,17 +130,15 @@ class ProcessHistoryCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      processo.observacoes!,
-                      style: AppTextStyles.bodySmall,
-                    ),
+                    Text(processo.observacoes!, style: AppTextStyles.bodySmall),
                   ],
                 ),
               ),
             ],
 
             // Motivo do erro (se houver)
-            if (processo.motivoErro != null && processo.motivoErro!.isNotEmpty) ...[
+            if (processo.motivoErro != null &&
+                processo.motivoErro!.isNotEmpty) ...[
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -213,11 +208,7 @@ class ProcessHistoryCard extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(
-              icon,
-              size: 16,
-              color: AppColors.textSecondary,
-            ),
+            Icon(icon, size: 16, color: AppColors.textSecondary),
             const SizedBox(width: 4),
             Text(
               label,
@@ -230,9 +221,7 @@ class ProcessHistoryCard extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           value,
-          style: AppTextStyles.bodyMedium.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
+          style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w500),
         ),
       ],
     );

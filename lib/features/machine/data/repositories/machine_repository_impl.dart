@@ -8,59 +8,44 @@ import '../../domain/entities/matriz.dart';
 import '../../domain/entities/machine_config.dart';
 import '../../domain/repositories/machine_repository.dart';
 import '../datasources/machine_remote_datasource_impl.dart';
-import '../datasources/machine_local_datasource_impl.dart';
 import '../models/carcaca_model.dart';
 import '../models/matriz_model.dart';
 import '../models/machine_config_model.dart';
 
 /// Implementação simplificada do repositório de máquina
-/// Conecta os datasources remotos e locais com a camada de domínio
+/// Conecta apenas o datasource remoto com a camada de domínio
 class MachineRepositoryImpl implements MachineRepository {
   final MachineRemoteDataSourceImpl remoteDataSource;
-  final MachineLocalDataSourceImpl localDataSource;
 
   MachineRepositoryImpl({
     required this.remoteDataSource,
-    required this.localDataSource,
   }) {
     developer.log('🏗️ MachineRepositoryImpl inicializado', name: 'MachineRepository');
   }
+  
+  // TODO: Implementar método para buscar todas as máquinas
+  // @override
+  // Future<Either<Failure, List<RegistroMaquina>>> getAllMachines() async {
+  //   // Implementação futura
+  // }
 
   @override
   Future<Either<Failure, List<Matriz>>> getAllMatrizes() async {
     developer.log('📋 Buscando todas as matrizes', name: 'MachineRepository');
     
     try {
-      // Primeiro tenta buscar do cache local
-      try {
-        developer.log('💾 Tentando buscar matrizes do cache local', name: 'MachineRepository');
-        final cachedMatrizes = await localDataSource.getCachedMatrizes();
-        developer.log('✅ Matrizes encontradas no cache: ${cachedMatrizes.length} itens', name: 'MachineRepository');
-        return Right(cachedMatrizes);
-      } catch (e) {
-        developer.log('ℹ️ Cache não disponível, buscando da API: $e', name: 'MachineRepository');
-        
-        // Se não há cache, busca da API
-        developer.log('🌐 Fazendo requisição para API remota', name: 'MachineRepository');
-        final remoteMatrizes = await remoteDataSource.getAllMatrizes();
-        developer.log('✅ Matrizes obtidas da API: ${remoteMatrizes.length} itens', name: 'MachineRepository');
-        
-        // Salva no cache para próximas consultas
-        developer.log('💾 Salvando matrizes no cache local', name: 'MachineRepository');
-        await localDataSource.cacheMatrizes(remoteMatrizes);
-        developer.log('✅ Matrizes salvas no cache com sucesso', name: 'MachineRepository');
-        
-        return Right(remoteMatrizes);
-      }
+      // Busca diretamente da API
+      developer.log('🌐 Fazendo requisição para API remota', name: 'MachineRepository');
+      final remoteMatrizes = await remoteDataSource.getAllMatrizes();
+      developer.log('✅ Matrizes obtidas da API: ${remoteMatrizes.length} itens', name: 'MachineRepository');
+      
+      return Right(remoteMatrizes);
     } on ServerException catch (e) {
       AppLogger.error('Erro do servidor ao buscar matrizes: ${e.message}', name: 'MachineRepository');
       return Left(ServerFailure(message: e.message));
     } on NetworkException catch (e) {
       AppLogger.error('Erro de rede ao buscar matrizes: ${e.message}', name: 'MachineRepository');
       return Left(NetworkFailure(message: e.message));
-    } on CacheException catch (e) {
-      AppLogger.error('Erro de cache ao buscar matrizes: ${e.message}', name: 'MachineRepository');
-      return Left(CacheFailure(message: e.message));
     } catch (e) {
       AppLogger.error('Erro inesperado ao buscar matrizes: $e', name: 'MachineRepository');
       return Left(DeviceFailure(message: 'Unexpected error: $e'));
@@ -74,32 +59,17 @@ class MachineRepositoryImpl implements MachineRepository {
     developer.log('  - User ID: $userId', name: 'MachineRepository');
     
     try {
-      // Primeiro tenta buscar do cache local
-      developer.log('💾 Tentando buscar configuração do cache local', name: 'MachineRepository');
-      final cachedConfig = await localDataSource.getCachedMachineConfig(deviceId, userId);
-      if (cachedConfig != null) {
-        developer.log('✅ Configuração encontrada no cache', name: 'MachineRepository');
-        developer.log('  - Matriz ID: ${cachedConfig.matrizId}', name: 'MachineRepository');
-        developer.log('  - Configurada em: ${cachedConfig.configuredAt}', name: 'MachineRepository');
-        return Right(cachedConfig);
-      }
-
-      developer.log('ℹ️ Configuração não encontrada no cache, buscando da API', name: 'MachineRepository');
-      
-      // Se não há cache, busca da API
+      // Busca sempre da API remota (sem cache)
       developer.log('🌐 Fazendo requisição para API remota', name: 'MachineRepository');
       final remoteConfig = await remoteDataSource.getCurrentMachineConfig(deviceId, userId);
       developer.log('✅ Configuração obtida da API', name: 'MachineRepository');
       developer.log('  - Matriz ID: ${remoteConfig.matrizId}', name: 'MachineRepository');
       
-      // Salva no cache para próximas consultas
-      developer.log('💾 Salvando configuração no cache local', name: 'MachineRepository');
-      await localDataSource.cacheMachineConfig(remoteConfig);
-      developer.log('✅ Configuração salva no cache com sucesso', name: 'MachineRepository');
-      
       return Right(remoteConfig);
     } on ServerException catch (e) {
-      if (e.message.contains('not found') || e.message.contains('404')) {
+      if (e.message.contains('not found') || 
+          e.message.contains('404') || 
+          e.message.contains('não encontrada')) {
         developer.log('ℹ️ Nenhuma configuração encontrada para este dispositivo/usuário', name: 'MachineRepository');
         return const Right(null);
       }
@@ -108,9 +78,6 @@ class MachineRepositoryImpl implements MachineRepository {
     } on NetworkException catch (e) {
       AppLogger.error('Erro de rede ao buscar configuração: ${e.message}', name: 'MachineRepository');
       return Left(NetworkFailure(message: e.message));
-    } on CacheException catch (e) {
-      AppLogger.error('Erro de cache ao buscar configuração: ${e.message}', name: 'MachineRepository');
-      return Left(CacheFailure(message: e.message));
     } catch (e) {
       AppLogger.error('Erro inesperado ao buscar configuração: $e', name: 'MachineRepository');
       return Left(DeviceFailure(message: 'Unexpected error: $e'));
@@ -136,11 +103,6 @@ class MachineRepositoryImpl implements MachineRepository {
       developer.log('  - Config ID: ${updatedConfig.id}', name: 'MachineRepository');
       developer.log('  - Configurada em: ${updatedConfig.configuredAt}', name: 'MachineRepository');
       
-      // Atualiza o cache local
-      developer.log('💾 Atualizando cache local com nova configuração', name: 'MachineRepository');
-      await localDataSource.cacheMachineConfig(updatedConfig);
-      developer.log('✅ Cache local atualizado com sucesso', name: 'MachineRepository');
-      
       return Right(updatedConfig);
     } on ServerException catch (e) {
       AppLogger.error('Erro do servidor ao salvar configuração: ${e.message}', name: 'MachineRepository');
@@ -148,9 +110,6 @@ class MachineRepositoryImpl implements MachineRepository {
     } on NetworkException catch (e) {
       AppLogger.error('Erro de rede ao salvar configuração: ${e.message}', name: 'MachineRepository');
       return Left(NetworkFailure(message: e.message));
-    } on CacheException catch (e) {
-      AppLogger.error('Erro de cache ao salvar configuração: ${e.message}', name: 'MachineRepository');
-      return Left(CacheFailure(message: e.message));
     } catch (e) {
       AppLogger.error('Erro inesperado ao salvar configuração: $e', name: 'MachineRepository');
       return Left(DeviceFailure(message: 'Unexpected error: $e'));
@@ -280,15 +239,44 @@ class MachineRepositoryImpl implements MachineRepository {
 
   @override
   Future<Either<Failure, void>> removeMachineConfig(String deviceId, String userId) async {
+    // Método não implementado - sem cache local
+    return Left(DeviceFailure(message: 'Method not implemented'));
+  }
+
+  @override
+  Future<Either<Failure, void>> removeAllActiveConfigsForDevice(String deviceId) async {
     try {
-      // Remove do cache local
-      await localDataSource.removeCachedMachineConfig(deviceId, userId);
+      developer.log(
+        '🗑️ Removendo todas as configurações ativas para o dispositivo: $deviceId',
+        name: 'MachineRepository',
+      );
+
+      await remoteDataSource.removeAllActiveConfigsForDevice(deviceId);
+      
+      developer.log(
+        '✅ Todas as configurações ativas removidas com sucesso',
+        name: 'MachineRepository',
+      );
       
       return const Right(null);
-    } on CacheException catch (e) {
-      return Left(CacheFailure(message: e.message));
+    } on ServerException catch (e) {
+      AppLogger.error(
+        'Erro do servidor ao remover configurações: ${e.message}',
+        name: 'MachineRepository',
+      );
+      return Left(ServerFailure(message: e.message));
+    } on NetworkException catch (e) {
+      AppLogger.error(
+        'Erro de rede ao remover configurações: ${e.message}',
+        name: 'MachineRepository',
+      );
+      return Left(NetworkFailure(message: e.message));
     } catch (e) {
-      return Left(DeviceFailure(message: 'Unexpected error: $e'));
+      AppLogger.error(
+        'Erro inesperado ao remover configurações: $e',
+        name: 'MachineRepository',
+      );
+      return Left(DeviceFailure(message: 'Erro inesperado: $e'));
     }
   }
 }

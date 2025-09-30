@@ -30,15 +30,13 @@ class _LoginPageState extends State<LoginPage> {
   void _handleLogin() {
     if (_formKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(
-            AuthLoginRequested(
-              username: _usernameController.text.trim(),
-              password: _passwordController.text,
-            ),
-          );
+        AuthLoginRequested(
+          username: _usernameController.text.trim(),
+          password: _passwordController.text,
+        ),
+      );
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -64,110 +62,111 @@ class _LoginPageState extends State<LoginPage> {
               constraints: BoxConstraints(
                 minHeight: math.max(
                   400, // Altura mínima segura
-                  MediaQuery.of(context).size.height - 
-                  MediaQuery.of(context).padding.top - 
-                  MediaQuery.of(context).padding.bottom - 100,
+                  MediaQuery.of(context).size.height -
+                      MediaQuery.of(context).padding.top -
+                      MediaQuery.of(context).padding.bottom -
+                      100,
                 ),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                // Logo
-                Container(
-                  height: 120,
-                  margin: const EdgeInsets.only(bottom: 48),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(16),
+                  // Logo
+                  Container(
+                    height: 120,
+                    margin: const EdgeInsets.only(bottom: 48),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.precision_manufacturing,
+                      size: 64,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.precision_manufacturing,
-                    size: 64,
-                    color: Colors.white,
-                  ),
-                ),
 
-                // Título
-                Text(
-                  'GP Máquina',
-                  style: AppTextStyles.headlineLarge.copyWith(
-                    color: AppColors.primary,
+                  // Título
+                  Text(
+                    'GP Máquina',
+                    style: AppTextStyles.headlineLarge.copyWith(
+                      color: AppColors.primary,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Sistema de Controle de Injeção',
-                  style: AppTextStyles.bodyLarge.copyWith(
-                    color: AppColors.textSecondary,
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sistema de Controle de Injeção',
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 48),
+                  const SizedBox(height: 48),
 
-                // Formulário
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      CustomTextField(
-                        controller: _usernameController,
-                        label: 'Usuário',
-                        prefixIcon: Icons.person,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Por favor, insira o usuário';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      CustomTextField(
-                        controller: _passwordController,
-                        label: 'Senha',
-                        prefixIcon: Icons.lock,
-                        obscureText: _obscurePassword,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
+                  // Formulário
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        CustomTextField(
+                          controller: _usernameController,
+                          label: 'Usuário',
+                          prefixIcon: Icons.person,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Por favor, insira o usuário';
+                            }
+                            return null;
                           },
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Por favor, insira a senha';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Botões
-                BlocBuilder<AuthBloc, AuthState>(
-                  builder: (context, state) {
-                    final isLoading = state is AuthLoading;
-                    
-                    return Column(
-                      children: [
-                        CustomButton(
-                          text: 'Entrar',
-                          onPressed: isLoading ? null : _handleLogin,
-                          isLoading: isLoading,
+                        const SizedBox(height: 16),
+                        CustomTextField(
+                          controller: _passwordController,
+                          label: 'Senha',
+                          prefixIcon: Icons.lock,
+                          obscureText: _obscurePassword,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Por favor, insira a senha';
+                            }
+                            return null;
+                          },
                         ),
                       ],
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Botões
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, state) {
+                      final isLoading = state is AuthLoading;
+
+                      return Column(
+                        children: [
+                          CustomButton(
+                            text: 'Entrar',
+                            onPressed: isLoading ? null : _handleLogin,
+                            isLoading: isLoading,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ],
               ),
             ),

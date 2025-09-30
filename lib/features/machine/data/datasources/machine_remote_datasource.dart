@@ -6,7 +6,7 @@ import '../models/machine_config_model.dart';
 /// Define métodos para interagir com a API de máquina
 abstract class MachineRemoteDataSource {
   /// Operações de Carcaça
-  
+
   /// Busca uma carcaça por ID
   /// Throws [ServerException] se houver erro no servidor
   /// Throws [NetworkException] se houver erro de rede
@@ -61,7 +61,7 @@ abstract class MachineRemoteDataSource {
   Future<List<CarcacaModel>> getCarcacasByMatriz(String matrizId);
 
   /// Operações de Matriz
-  
+
   /// Busca uma matriz por ID
   /// Throws [ServerException] se houver erro no servidor
   /// Throws [NetworkException] se houver erro de rede
@@ -121,8 +121,16 @@ abstract class MachineRemoteDataSource {
   /// Throws [NetworkException] se houver erro de rede
   Future<List<MatrizModel>> getMatrizesByModelo(String modelo);
 
+  /// Busca todas as máquinas registradas
+  ///
+  /// Retorna uma lista de [RegistroMaquinaModel] em caso de sucesso
+  /// Lança [ServerException] em caso de falha no servidor
+  /// Lança [NetworkException] em caso de falha na rede
+  /// Lança [AuthenticationException] em caso de falha na autenticação
+  Future<List<RegistroMaquinaModel>> getAllMachines();
+
   /// Operações de sincronização
-  
+
   /// Sincroniza dados de carcaças com o servidor
   /// Throws [ServerException] se houver erro no servidor
   /// Throws [NetworkException] se houver erro de rede
@@ -139,7 +147,7 @@ abstract class MachineRemoteDataSource {
   Future<void> syncMachineData();
 
   /// Operações de validação
-  
+
   /// Valida código de carcaça
   /// Throws [ServerException] se houver erro no servidor
   /// Throws [NetworkException] se houver erro de rede
@@ -153,7 +161,7 @@ abstract class MachineRemoteDataSource {
   Future<bool> validateMatrizCodigo(String codigo);
 
   /// Operações de Configuração da Máquina
-  
+
   /// Salva a configuração da máquina
   /// Throws [ServerException] se houver erro no servidor
   /// Throws [NetworkException] se houver erro de rede
@@ -163,10 +171,19 @@ abstract class MachineRemoteDataSource {
   /// Busca a configuração atual da máquina
   /// Throws [ServerException] se houver erro no servidor
   /// Throws [NetworkException] se houver erro de rede
-  Future<MachineConfigModel?> getCurrentMachineConfig(String deviceId, String userId);
+  Future<MachineConfigModel?> getCurrentMachineConfig(
+    String deviceId,
+    String userId,
+  );
 
   /// Remove a configuração da máquina
   /// Throws [ServerException] se houver erro no servidor
   /// Throws [NetworkException] se houver erro de rede
   Future<void> removeMachineConfig(String deviceId, String userId);
+
+  /// Remove todas as configurações ativas de um dispositivo
+  /// Usado quando há múltiplas configurações ativas (erro de duplicação)
+  /// Throws [ServerException] se houver erro no servidor
+  /// Throws [NetworkException] se houver erro de rede
+  Future<void> removeAllActiveConfigsForDevice(String deviceId);
 }

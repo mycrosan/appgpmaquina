@@ -31,4 +31,22 @@ abstract class AuthRepository {
 
   /// Remove o token de autenticação salvo localmente
   Future<Either<Failure, void>> removeAuthToken();
+
+  /// Salva as credenciais do usuário para login automático
+  Future<Either<Failure, void>> saveUserCredentials({
+    required String username,
+    required String password,
+  });
+
+  /// Obtém as credenciais salvas do usuário
+  Future<Either<Failure, Map<String, String>?>> getUserCredentials();
+
+  /// Remove as credenciais salvas do usuário
+  Future<Either<Failure, void>> removeUserCredentials();
+
+  /// Verifica se existem credenciais salvas
+  Future<Either<Failure, bool>> hasUserCredentials();
+
+  /// Tenta fazer login automático com credenciais salvas
+  Future<Either<Failure, AuthToken?>> tryAutoLogin();
 }

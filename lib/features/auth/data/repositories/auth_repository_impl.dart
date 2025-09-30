@@ -28,10 +28,10 @@ class AuthRepositoryImpl implements AuthRepository {
         username: username,
         password: password,
       );
-      
+
       // Salva o token localmente
       await localDataSource.saveAuthToken(authTokenModel);
-      
+
       return Right(authTokenModel.toEntity());
     } on AuthenticationException catch (e) {
       return Left(AuthenticationFailure(message: e.message));
@@ -49,14 +49,14 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       // Remove o token localmente
       await localDataSource.removeAuthToken();
-      
+
       // Notifica o servidor
       try {
         await remoteDataSource.logout("");
       } catch (e) {
         // Ignora erros do servidor no logout
       }
-      
+
       return Right(null);
     } on CacheException catch (e) {
       return Left(CacheFailure(message: e.message));
@@ -81,10 +81,10 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, AuthToken>> refreshToken(String refreshToken) async {
     try {
       final authTokenModel = await remoteDataSource.refreshToken(refreshToken);
-      
+
       // Salva o novo token localmente
       await localDataSource.saveAuthToken(authTokenModel);
-      
+
       return Right(authTokenModel.toEntity());
     } on AuthenticationException catch (e) {
       return Left(AuthenticationFailure(message: e.message));
@@ -102,18 +102,17 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       // Primeiro obtém o token salvo localmente
       final tokenResult = await getAuthToken();
-      
-      return tokenResult.fold(
-        (failure) => Left(failure),
-        (authToken) async {
-          if (authToken == null) {
-            return Left(AuthenticationFailure(message: 'Token não encontrado'));
-          }
-          
-          final userModel = await remoteDataSource.getCurrentUser(authToken.accessToken);
-          return Right(userModel.toEntity());
-        },
-      );
+
+      return tokenResult.fold((failure) => Left(failure), (authToken) async {
+        if (authToken == null) {
+          return Left(AuthenticationFailure(message: 'Token não encontrado'));
+        }
+
+        final userModel = await remoteDataSource.getCurrentUser(
+          authToken.accessToken,
+        );
+        return Right(userModel.toEntity());
+      });
     } on AuthenticationException catch (e) {
       return Left(AuthenticationFailure(message: e.message));
     } on ServerException catch (e) {
@@ -157,7 +156,7 @@ class AuthRepositoryImpl implements AuthRepository {
       if (token == null) {
         return Right(false);
       }
-      
+
       // Verifica se o token não expirou
       final authToken = token.toEntity();
       return Right(!authToken.isExpired);
@@ -176,5 +175,85 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, void>> removeAuthToken() async {
     return removeTokenLocally();
+  }
+
+  @override
+  Future<Either<Failure, void>> saveUserCredentials({
+    required String username,
+    required String password,
+  }) async {
+    try {
+      await localDataSource.saveUserCredentials(
+        username: username,
+        password: password,
+      );
+      return Right(null);
+    } on CacheException catch (e) {
+      return Left(CacheFailure(message: e.message));
+    } catch (e) {
+      return Left(ServerFailure(message: 'Erro inesperado: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Map<String, String>?>> getUserCredentials() async {
+    try {
+      final credentials = await localDataSource.getUserCredentials();
+      return Right(credentials);
+    } on CacheException catch (e) {
+      return Left(CacheFailure(message: e.message));
+    } catch (e) {
+      return Left(ServerFailure(message: 'Erro inesperado: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> removeUserCredentials() async {
+    try {
+      await localDataSource.removeUserCredentials();
+      return Right(null);
+    } on CacheException catch (e) {
+      return Left(CacheFailure(message: e.message));
+    } catch (e) {
+      return Left(ServerFailure(message: 'Erro inesperado: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> hasUserCredentials() async {
+    try {
+      final hasCredentials = await localDataSource.hasUserCredentials();
+      return Right(hasCredentials);
+    } on CacheException catch (e) {
+      return Left(CacheFailure(message: e.message));
+    } catch (e) {
+      return Left(ServerFailure(message: 'Erro inesperado: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, AuthToken?>> tryAutoLogin() async {
+    try {
+      // Verifica se há credenciais salvas
+      final credentials = await localDataSource.getUserCredentials();
+      if (credentials == null) {
+        return Right(null);
+      }
+
+      // Tenta fazer login com as credenciais salvas
+      final loginResult = await login(
+        username: credentials['username']!,
+        password: credentials['password']!,
+      );
+
+      return loginResult.fold(
+        (failure) => Left(failure),
+        (token) => Right(token),
+      );
+    } on CacheException catch (e) {
+      return Left(CacheFailure(message: e.message));
+    } catch (e) {
+      return Left(ServerFailure(message: 'Erro inesperado: $e'));
+    }
   }
 }

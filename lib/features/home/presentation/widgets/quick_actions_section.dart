@@ -20,10 +20,7 @@ class QuickActionsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Ações Rápidas',
-          style: AppTextStyles.titleMedium,
-        ),
+        Text('Ações Rápidas', style: AppTextStyles.titleMedium),
         const SizedBox(height: 16),
         Row(
           children: [
@@ -126,17 +123,10 @@ class QuickActionsSection extends StatelessWidget {
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 20,
-              ),
+              child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(height: 12),
-            Text(
-              title,
-              style: AppTextStyles.titleSmall,
-            ),
+            Text(title, style: AppTextStyles.titleSmall),
             const SizedBox(height: 4),
             Text(
               subtitle,
@@ -153,28 +143,36 @@ class QuickActionsSection extends StatelessWidget {
   void _navigateToNewProcess(BuildContext context) {
     // TODO: Implementar navegação para nova injeção
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navegação para novo processo em desenvolvimento')),
+      const SnackBar(
+        content: Text('Navegação para novo processo em desenvolvimento'),
+      ),
     );
   }
 
   void _navigateToHistory(BuildContext context) {
     // TODO: Implementar navegação para histórico
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navegação para histórico em desenvolvimento')),
+      const SnackBar(
+        content: Text('Navegação para histórico em desenvolvimento'),
+      ),
     );
   }
 
   void _navigateToSettings(BuildContext context) {
     // TODO: Implementar navegação para configurações
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navegação para configurações em desenvolvimento')),
+      const SnackBar(
+        content: Text('Navegação para configurações em desenvolvimento'),
+      ),
     );
   }
 
   void _navigateToReports(BuildContext context) {
     // TODO: Implementar navegação para relatórios
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Navegação para relatórios em desenvolvimento')),
+      const SnackBar(
+        content: Text('Navegação para relatórios em desenvolvimento'),
+      ),
     );
   }
 }

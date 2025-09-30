@@ -39,7 +39,10 @@ class MachineLocalDataSourceImpl {
     await sharedPreferences.setString(CACHED_MACHINE_CONFIG, jsonString);
   }
 
-  Future<MachineConfigModel?> getCachedMachineConfig(String deviceId, String userId) async {
+  Future<MachineConfigModel?> getCachedMachineConfig(
+    String deviceId,
+    String userId,
+  ) async {
     final jsonString = sharedPreferences.getString(CACHED_MACHINE_CONFIG);
     if (jsonString != null) {
       final json = jsonDecode(jsonString);

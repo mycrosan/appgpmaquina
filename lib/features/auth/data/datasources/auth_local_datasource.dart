@@ -13,4 +13,19 @@ abstract class AuthLocalDataSource {
 
   /// Verifica se existe um token salvo localmente
   Future<bool> hasAuthToken();
+
+  /// Salva as credenciais do usuário para login automático
+  Future<void> saveUserCredentials({
+    required String username,
+    required String password,
+  });
+
+  /// Obtém as credenciais salvas do usuário
+  Future<Map<String, String>?> getUserCredentials();
+
+  /// Remove as credenciais salvas do usuário
+  Future<void> removeUserCredentials();
+
+  /// Verifica se existem credenciais salvas
+  Future<bool> hasUserCredentials();
 }

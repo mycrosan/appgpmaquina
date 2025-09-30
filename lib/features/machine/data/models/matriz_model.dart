@@ -17,8 +17,12 @@ class MatrizModel extends Matriz {
     return MatrizModel(
       id: json['id'] as int,
       descricao: json['descricao'] as String,
-      nome: json['nome'] as String? ?? json['descricao'] as String, // Usa descricao como fallback para nome
-      codigo: json['codigo'] as String? ?? 'M${json['id']}', // Gera código baseado no ID se não existir
+      nome:
+          json['nome'] as String? ??
+          json['descricao'] as String, // Usa descricao como fallback para nome
+      codigo:
+          json['codigo'] as String? ??
+          'M${json['id']}', // Gera código baseado no ID se não existir
       isActive: json['is_active'] as bool? ?? true,
       canBeUsed: json['can_be_used'] as bool? ?? true,
     );

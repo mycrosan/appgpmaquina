@@ -27,7 +27,7 @@ class AuthTokenModel extends AuthToken {
   factory AuthTokenModel.fromLoginResponse(Map<String, dynamic> json) {
     // Mapeia a resposta real da API GP
     // Formato: {"token": "...", "tipo": "Bearer", "status": true}
-    
+
     // Extrai informações do JWT para determinar expiração
     DateTime expiresAt;
     try {
@@ -37,11 +37,14 @@ class AuthTokenModel extends AuthToken {
         // Decodifica o payload do JWT
         final payload = parts[1];
         // Adiciona padding se necessário
-        final normalizedPayload = payload.padRight((payload.length + 3) ~/ 4 * 4, '=');
+        final normalizedPayload = payload.padRight(
+          (payload.length + 3) ~/ 4 * 4,
+          '=',
+        );
         final decodedBytes = base64Url.decode(normalizedPayload);
         final decodedPayload = utf8.decode(decodedBytes);
         final payloadJson = jsonDecode(decodedPayload) as Map<String, dynamic>;
-        
+
         // Extrai o timestamp de expiração (exp)
         final exp = payloadJson['exp'] as int?;
         if (exp != null) {

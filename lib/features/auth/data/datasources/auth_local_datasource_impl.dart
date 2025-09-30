@@ -8,6 +8,7 @@ import 'auth_local_datasource.dart';
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   final SharedPreferences sharedPreferences;
   static const String _authTokenKey = 'auth_token';
+  static const String _userCredentialsKey = 'user_credentials';
 
   AuthLocalDataSourceImpl({required this.sharedPreferences});
 
@@ -15,7 +16,10 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   Future<void> saveAuthToken(AuthTokenModel token) async {
     try {
       final tokenJson = json.encode(token.toJson());
-      final success = await sharedPreferences.setString(_authTokenKey, tokenJson);
+      final success = await sharedPreferences.setString(
+        _authTokenKey,
+        tokenJson,
+      );
       if (!success) {
         throw CacheException(message: 'Falha ao salvar token de autenticação');
       }
@@ -63,6 +67,76 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
       return sharedPreferences.containsKey(_authTokenKey);
     } catch (e) {
       throw CacheException(message: 'Erro ao verificar token: $e');
+    }
+  }
+
+  @override
+  Future<void> saveUserCredentials({
+    required String username,
+    required String password,
+  }) async {
+    try {
+      final credentialsJson = json.encode({
+        'username': username,
+        'password': password,
+      });
+      final success = await sharedPreferences.setString(
+        _userCredentialsKey,
+        credentialsJson,
+      );
+      if (!success) {
+        throw CacheException(message: 'Falha ao salvar credenciais do usuário');
+      }
+    } catch (e) {
+      if (e is CacheException) {
+        rethrow;
+      }
+      throw CacheException(message: 'Erro ao salvar credenciais: $e');
+    }
+  }
+
+  @override
+  Future<Map<String, String>?> getUserCredentials() async {
+    try {
+      final credentialsJson = sharedPreferences.getString(_userCredentialsKey);
+      if (credentialsJson == null) {
+        return null;
+      }
+
+      final credentialsMap =
+          json.decode(credentialsJson) as Map<String, dynamic>;
+      return {
+        'username': credentialsMap['username'] as String,
+        'password': credentialsMap['password'] as String,
+      };
+    } catch (e) {
+      throw CacheException(message: 'Erro ao recuperar credenciais: $e');
+    }
+  }
+
+  @override
+  Future<void> removeUserCredentials() async {
+    try {
+      final success = await sharedPreferences.remove(_userCredentialsKey);
+      if (!success) {
+        throw CacheException(
+          message: 'Falha ao remover credenciais do usuário',
+        );
+      }
+    } catch (e) {
+      if (e is CacheException) {
+        rethrow;
+      }
+      throw CacheException(message: 'Erro ao remover credenciais: $e');
+    }
+  }
+
+  @override
+  Future<bool> hasUserCredentials() async {
+    try {
+      return sharedPreferences.containsKey(_userCredentialsKey);
+    } catch (e) {
+      throw CacheException(message: 'Erro ao verificar credenciais: $e');
     }
   }
 }

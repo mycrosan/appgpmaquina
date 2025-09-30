@@ -1,6 +1,7 @@
 import '../../domain/entities/machine_config.dart';
 import '../../domain/entities/matriz.dart';
 import 'matriz_model.dart';
+import 'configuracao_maquina_dto.dart';
 
 /// Modelo de dados para MachineConfig que estende a entidade
 /// Adiciona funcionalidades de serialização JSON
@@ -23,11 +24,11 @@ class MachineConfigModel extends MachineConfig {
       deviceId: json['device_id'] as String,
       userId: json['user_id'] as String,
       matrizId: json['matriz_id'] as int,
-      matriz: json['matriz'] != null 
+      matriz: json['matriz'] != null
           ? MatrizModel.fromJson(json['matriz'] as Map<String, dynamic>)
           : null,
       configuredAt: DateTime.parse(json['configured_at'] as String),
-      updatedAt: json['updated_at'] != null 
+      updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
           : null,
       isActive: json['is_active'] as bool? ?? true,
@@ -41,7 +42,9 @@ class MachineConfigModel extends MachineConfig {
       'device_id': deviceId,
       'user_id': userId,
       'matriz_id': matrizId,
-      'matriz': matriz != null ? MatrizModel.fromEntity(matriz!).toJson() : null,
+      'matriz': matriz != null
+          ? MatrizModel.fromEntity(matriz!).toJson()
+          : null,
       'configured_at': configuredAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'is_active': isActive,
@@ -59,6 +62,28 @@ class MachineConfigModel extends MachineConfig {
       configuredAt: config.configuredAt,
       updatedAt: config.updatedAt,
       isActive: config.isActive,
+    );
+  }
+
+  /// Cria um MachineConfigModel a partir de ConfiguracaoMaquinaResponseDTO
+  factory MachineConfigModel.fromConfiguracao(
+    ConfiguracaoMaquinaResponseDTO dto, {
+    required String deviceId,
+    required String userId,
+    Matriz? matriz,
+  }) {
+    return MachineConfigModel(
+      id: dto.id,
+      deviceId: deviceId,
+      userId: userId,
+      matrizId: dto.matrizId ?? 0,
+      matriz: matriz,
+      configuredAt: dto.dtCreate != null
+          ? DateTime.parse(dto.dtCreate!)
+          : DateTime.now(),
+      updatedAt: dto.dtUpdate != null ? DateTime.parse(dto.dtUpdate!) : null,
+      // Configuração está ativa apenas se não foi soft-deletada (dt_delete é null)
+      isActive: dto.dtDelete == null,
     );
   }
 

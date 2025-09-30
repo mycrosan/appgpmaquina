@@ -62,8 +62,34 @@ class AuthenticationFailure extends Failure {
 /// Falhas relacionadas à validação de dados
 class ValidationFailure extends Failure {
   final String message;
+  final Map<String, String>? errors;
 
   const ValidationFailure({
+    required this.message,
+    this.errors,
+  });
+
+  @override
+  List<Object> get props => [message, errors ?? {}];
+}
+
+/// Falhas relacionadas à autorização
+class AuthorizationFailure extends Failure {
+  final String message;
+
+  const AuthorizationFailure({
+    required this.message,
+  });
+
+  @override
+  List<Object> get props => [message];
+}
+
+/// Falhas relacionadas a recursos não encontrados
+class NotFoundFailure extends Failure {
+  final String message;
+
+  const NotFoundFailure({
     required this.message,
   });
 

@@ -5,7 +5,7 @@ import '../entities/matriz.dart';
 import '../repositories/machine_repository.dart';
 
 /// Use case para buscar todas as matrizes ativas
-/// 
+///
 /// Este use case é responsável por recuperar todas as matrizes
 /// disponíveis no sistema que estão ativas e podem ser utilizadas
 /// na configuração da máquina.

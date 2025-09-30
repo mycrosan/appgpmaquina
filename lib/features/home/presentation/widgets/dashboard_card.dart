@@ -47,14 +47,10 @@ class DashboardCard extends StatelessWidget {
                   color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 24,
-                ),
+                child: Icon(icon, color: color, size: 24),
               ),
               const SizedBox(height: 8),
-              
+
               // Título
               Text(
                 title,
@@ -65,7 +61,7 @@ class DashboardCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
-              
+
               // Subtítulo
               Flexible(
                 child: Text(

@@ -13,10 +13,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository authRepository;
   final Login loginUseCase;
 
-  AuthBloc({
-    required this.authRepository,
-    required this.loginUseCase,
-  }) : super(AuthInitial()) {
+  AuthBloc({required this.authRepository, required this.loginUseCase})
+    : super(AuthInitial()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<AuthLoginRequested>(_onAuthLoginRequested);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
@@ -27,16 +25,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
-    
+
     try {
       final result = await authRepository.isAuthenticated();
       await result.fold(
-        (failure) async => emit(AuthUnauthenticated(message: _getFailureMessage(failure))),
+        (failure) async =>
+            emit(AuthUnauthenticated(message: _getFailureMessage(failure))),
         (isAuthenticated) async {
           if (isAuthenticated) {
             await _loadCurrentUser(emit);
           } else {
-            emit(const AuthUnauthenticated());
+            // Tenta login automático se não há token válido
+            await _tryAutoLogin(emit);
           }
         },
       );
@@ -50,17 +50,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
-    
+
     try {
-      final result = await loginUseCase(LoginParams(
-        username: event.username,
-        password: event.password,
-      ));
-      
+      final result = await loginUseCase(
+        LoginParams(username: event.username, password: event.password),
+      );
+
       if (result.isLeft()) {
         final failure = result.fold((l) => l, (r) => null);
         emit(AuthUnauthenticated(message: _getFailureMessage(failure)));
       } else {
+        // Login bem-sucedido, salva as credenciais para login automático
+        await authRepository.saveUserCredentials(
+          username: event.username,
+          password: event.password,
+        );
         await _loadCurrentUser(emit);
       }
     } catch (e) {
@@ -73,11 +77,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
-    
+
     try {
       final result = await authRepository.logout();
       result.fold(
-        (failure) => emit(AuthUnauthenticated(message: _getFailureMessage(failure))),
+        (failure) =>
+            emit(AuthUnauthenticated(message: _getFailureMessage(failure))),
         (_) => emit(const AuthUnauthenticated()),
       );
     } catch (e) {
@@ -89,11 +94,36 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final result = await authRepository.getCurrentUser();
       result.fold(
-        (failure) => emit(AuthUnauthenticated(message: _getFailureMessage(failure))),
+        (failure) =>
+            emit(AuthUnauthenticated(message: _getFailureMessage(failure))),
         (user) => emit(AuthAuthenticated(user: user)),
       );
     } catch (e) {
       emit(AuthUnauthenticated(message: e.toString()));
+    }
+  }
+
+  Future<void> _tryAutoLogin(Emitter<AuthState> emit) async {
+    try {
+      final result = await authRepository.tryAutoLogin();
+      await result.fold(
+        (failure) async {
+          // Se falhar o login automático, emite estado não autenticado sem mensagem de erro
+          emit(const AuthUnauthenticated());
+        },
+        (token) async {
+          if (token != null) {
+            // Login automático bem-sucedido, carrega o usuário atual
+            await _loadCurrentUser(emit);
+          } else {
+            // Não há credenciais salvas
+            emit(const AuthUnauthenticated());
+          }
+        },
+      );
+    } catch (e) {
+      // Em caso de erro, emite estado não autenticado sem mensagem
+      emit(const AuthUnauthenticated());
     }
   }
 

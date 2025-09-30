@@ -24,10 +24,10 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
     Emitter<MachineState> emit,
   ) async {
     emit(MachineLoading());
-    
+
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // Simulated data for testing
     final carcacas = <Carcaca>[
       Carcaca(
@@ -38,7 +38,7 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
         createdAt: DateTime.now(),
       ),
     ];
-    
+
     emit(MachineCarcacasLoaded(carcacas: carcacas));
   }
 
@@ -47,10 +47,10 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
     Emitter<MachineState> emit,
   ) async {
     emit(MachineLoading());
-    
+
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // Simulated data for testing
     final matrizes = <Matriz>[
       Matriz(
@@ -62,7 +62,7 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
         canBeUsed: true,
       ),
     ];
-    
+
     emit(MachineMatrizesLoaded(matrizes: matrizes));
   }
 
@@ -71,10 +71,10 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
     Emitter<MachineState> emit,
   ) async {
     emit(MachineLoading());
-    
+
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // Simulated data for testing
     final carcaca = Carcaca(
       id: event.id,
@@ -83,7 +83,7 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
       matrizNome: 'Matriz ${event.id}',
       createdAt: DateTime.now(),
     );
-    
+
     emit(MachineCarcacaLoaded(carcaca: carcaca));
   }
 
@@ -92,10 +92,10 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
     Emitter<MachineState> emit,
   ) async {
     emit(MachineLoading());
-    
+
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // Simulated data for testing
     final matriz = Matriz(
       id: event.id,
@@ -105,7 +105,7 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
       isActive: true,
       canBeUsed: true,
     );
-    
+
     emit(MachineMatrizLoaded(matriz: matriz));
   }
 
@@ -114,10 +114,10 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
     Emitter<MachineState> emit,
   ) async {
     emit(MachineLoading());
-    
+
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // Simulated search results
     final carcacas = <Carcaca>[
       Carcaca(
@@ -128,7 +128,7 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
         createdAt: DateTime.now(),
       ),
     ];
-    
+
     emit(MachineCarcacasLoaded(carcacas: carcacas));
   }
 
@@ -137,10 +137,10 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
     Emitter<MachineState> emit,
   ) async {
     emit(MachineLoading());
-    
+
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // Simulated search results
     final matrizes = <Matriz>[
       Matriz(
@@ -152,7 +152,7 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
         canBeUsed: true,
       ),
     ];
-    
+
     emit(MachineMatrizesLoaded(matrizes: matrizes));
   }
 
@@ -162,11 +162,13 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
   ) async {
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     // Simulated check - always return true for testing
-    emit(MachineCarcacaProcessableChecked(
-      carcacaId: event.carcacaId,
-      canProcess: true,
-    ));
+    emit(
+      MachineCarcacaProcessableChecked(
+        carcacaId: event.carcacaId,
+        canProcess: true,
+      ),
+    );
   }
 }

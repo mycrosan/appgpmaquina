@@ -60,15 +60,15 @@ class ProcessoInjecao extends Equatable {
 
   /// Verifica se o processo está em execução
   bool get isRunning {
-    return status == StatusProcesso.iniciando || 
-           status == StatusProcesso.injetando;
+    return status == StatusProcesso.iniciando ||
+        status == StatusProcesso.injetando;
   }
 
   /// Verifica se o processo foi finalizado (com sucesso ou erro)
   bool get isFinished {
-    return status == StatusProcesso.concluido || 
-           status == StatusProcesso.erro || 
-           status == StatusProcesso.cancelado;
+    return status == StatusProcesso.concluido ||
+        status == StatusProcesso.erro ||
+        status == StatusProcesso.cancelado;
   }
 
   /// Verifica se o processo pode ser pausado
@@ -83,10 +83,10 @@ class ProcessoInjecao extends Equatable {
 
   /// Verifica se o processo pode ser cancelado
   bool get canBeCanceled {
-    return status == StatusProcesso.aguardando || 
-           status == StatusProcesso.iniciando || 
-           status == StatusProcesso.injetando || 
-           status == StatusProcesso.pausado;
+    return status == StatusProcesso.aguardando ||
+        status == StatusProcesso.iniciando ||
+        status == StatusProcesso.injetando ||
+        status == StatusProcesso.pausado;
   }
 
   /// Calcula o progresso do processo (0.0 a 1.0)
@@ -186,27 +186,27 @@ class ProcessoInjecao extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        carcacaId,
-        carcacaCodigo,
-        regraId,
-        matrizId,
-        matrizNome,
-        status,
-        tempoTotal,
-        tempoDecorrido,
-        pressaoInicial,
-        pressaoAtual,
-        pressaoAlvo,
-        pulsoAtual,
-        totalPulsos,
-        observacoes,
-        motivoErro,
-        iniciadoEm,
-        finalizadoEm,
-        userId,
-        userName,
-      ];
+    id,
+    carcacaId,
+    carcacaCodigo,
+    regraId,
+    matrizId,
+    matrizNome,
+    status,
+    tempoTotal,
+    tempoDecorrido,
+    pressaoInicial,
+    pressaoAtual,
+    pressaoAlvo,
+    pulsoAtual,
+    totalPulsos,
+    observacoes,
+    motivoErro,
+    iniciadoEm,
+    finalizadoEm,
+    userId,
+    userName,
+  ];
 
   @override
   String toString() {

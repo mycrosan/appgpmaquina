@@ -29,18 +29,20 @@ class LoadCurrentMachineConfig extends MachineConfigEvent {
 
 /// Evento para selecionar uma matriz para a máquina
 class SelectMatrizForMachine extends MachineConfigEvent {
-  final String matrizId;
+  final int matrizId;
   final String deviceId;
   final String userId;
+  final int? registroMaquinaId;
 
   const SelectMatrizForMachine({
     required this.matrizId,
     required this.deviceId,
     required this.userId,
+    this.registroMaquinaId,
   });
 
   @override
-  List<Object> get props => [matrizId, deviceId, userId];
+  List<Object?> get props => [matrizId, deviceId, userId, registroMaquinaId];
 }
 
 /// Evento para remover a configuração da máquina
@@ -48,10 +50,7 @@ class RemoveMachineConfig extends MachineConfigEvent {
   final String deviceId;
   final String userId;
 
-  const RemoveMachineConfig({
-    required this.deviceId,
-    required this.userId,
-  });
+  const RemoveMachineConfig({required this.deviceId, required this.userId});
 
   @override
   List<Object> get props => [deviceId, userId];

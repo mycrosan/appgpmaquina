@@ -35,12 +35,12 @@ class Regra extends Equatable {
 
   /// Verifica se a regra está ativa e pode ser aplicada
   bool get canBeApplied {
-    return isActive && 
-           tempo > 0 && 
-           pressaoMinima > 0 && 
-           pressaoMaxima > pressaoMinima &&
-           pressaoRecomendada >= pressaoMinima &&
-           pressaoRecomendada <= pressaoMaxima;
+    return isActive &&
+        tempo > 0 &&
+        pressaoMinima > 0 &&
+        pressaoMaxima > pressaoMinima &&
+        pressaoRecomendada >= pressaoMinima &&
+        pressaoRecomendada <= pressaoMaxima;
   }
 
   /// Verifica se uma pressão está dentro da faixa válida
@@ -51,9 +51,10 @@ class Regra extends Equatable {
   /// Calcula o tempo total de injeção considerando pulsos e intervalos
   int get tempoTotalInjecao {
     if (numeroPulsos <= 1) return tempo;
-    
+
     final tempoTotalPulsos = tempo;
-    final tempoTotalIntervalos = (numeroPulsos - 1) * (intervaloPulso / 1000).round();
+    final tempoTotalIntervalos =
+        (numeroPulsos - 1) * (intervaloPulso / 1000).round();
     return tempoTotalPulsos + tempoTotalIntervalos;
   }
 
@@ -103,20 +104,20 @@ class Regra extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        matrizId,
-        matrizNome,
-        tempo,
-        pressaoMinima,
-        pressaoMaxima,
-        pressaoRecomendada,
-        intervaloPulso,
-        numeroPulsos,
-        observacoes,
-        isActive,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    matrizId,
+    matrizNome,
+    tempo,
+    pressaoMinima,
+    pressaoMaxima,
+    pressaoRecomendada,
+    intervaloPulso,
+    numeroPulsos,
+    observacoes,
+    isActive,
+    createdAt,
+    updatedAt,
+  ];
 
   @override
   String toString() {

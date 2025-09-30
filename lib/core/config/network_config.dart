@@ -149,4 +149,17 @@ class ApiEndpoints {
   // User endpoints
   static String get users => '/users';
   static String userById(String id) => '/users/$id';
+
+  // Configuracao Maquina endpoints
+  static String get configuracaoMaquina => '/configuracao-maquina';
+  static String configuracaoMaquinaById(int id) => '/configuracao-maquina/$id';
+  static String configuracaoMaquinaByMaquinaAndChave(
+    int registroMaquinaId,
+    String chaveConfiguracao,
+  ) =>
+      '/configuracao-maquina/maquina/$registroMaquinaId/chave/$chaveConfiguracao';
+
+  // Registro Maquina endpoints
+  static String get registroMaquina => '/registro-maquina';
+  static String registroMaquinaById(int id) => '/registro-maquina/$id';
 }

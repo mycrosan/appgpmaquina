@@ -63,15 +63,15 @@ class Carcaca extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        codigo,
-        matrizId,
-        matrizNome,
-        observacoes,
-        createdAt,
-        updatedAt,
-        isActive,
-      ];
+    id,
+    codigo,
+    matrizId,
+    matrizNome,
+    observacoes,
+    createdAt,
+    updatedAt,
+    isActive,
+  ];
 
   @override
   String toString() {

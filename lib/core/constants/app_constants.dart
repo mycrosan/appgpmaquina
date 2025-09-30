@@ -7,7 +7,7 @@ class AppConstants {
   // URLs da API - DEPRECATED: Use AppConfig instead
   // static const String baseUrl = 'https://api.gpmaquina.com.br';
   // static const String apiVersion = '/v1';
-  
+
   // Endpoints da API - DEPRECATED: Use AppConfig instead
   // static const String loginEndpoint = '/auth/login';
   // static const String userEndpoint = '/users';
@@ -35,19 +35,27 @@ class AppConstants {
   static const String keyLastLoginTime = 'last_login_time';
 
   // Configurações de autenticação biométrica
-  static const String biometricReason = 'Autentique-se para acessar o aplicativo';
+  static const String biometricReason =
+      'Autentique-se para acessar o aplicativo';
   static const String biometricTitle = 'Autenticação Biométrica';
-  static const String biometricSubtitle = 'Use sua impressão digital ou Face ID';
+  static const String biometricSubtitle =
+      'Use sua impressão digital ou Face ID';
   static const String biometricNegativeButton = 'Cancelar';
 
   // Mensagens de erro padrão
-  static const String networkErrorMessage = 'Erro de conexão. Verifique sua internet.';
-  static const String serverErrorMessage = 'Erro no servidor. Tente novamente mais tarde.';
-  static const String authErrorMessage = 'Falha na autenticação. Verifique suas credenciais.';
-  static const String validationErrorMessage = 'Dados inválidos. Verifique os campos.';
-  static const String biometricErrorMessage = 'Falha na autenticação biométrica.';
+  static const String networkErrorMessage =
+      'Erro de conexão. Verifique sua internet.';
+  static const String serverErrorMessage =
+      'Erro no servidor. Tente novamente mais tarde.';
+  static const String authErrorMessage =
+      'Falha na autenticação. Verifique suas credenciais.';
+  static const String validationErrorMessage =
+      'Dados inválidos. Verifique os campos.';
+  static const String biometricErrorMessage =
+      'Falha na autenticação biométrica.';
   static const String hardwareErrorMessage = 'Erro no controle da válvula.';
-  static const String wrongMachineMessage = 'Máquina errada! Esta carcaça não pertence a esta matriz.';
+  static const String wrongMachineMessage =
+      'Máquina errada! Esta carcaça não pertence a esta matriz.';
 
   // Configurações de UI
   static const double defaultPadding = 16.0;
@@ -71,7 +79,8 @@ class AppConstants {
 
   // Regex patterns
   static const String carcacaCodePattern = r'^\d{6}$'; // 6 dígitos
-  static const String emailPattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$';
+  static const String emailPattern =
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$';
 
   // Configurações de cache
   static const Duration cacheExpiration = Duration(hours: 24);

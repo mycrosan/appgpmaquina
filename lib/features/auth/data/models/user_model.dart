@@ -16,18 +16,23 @@ class UserModel extends User {
   factory UserModel.fromJson(Map<String, dynamic> json) {
     // Extrai o primeiro perfil se existir
     String? role;
-    if (json['perfil'] != null && json['perfil'] is List && (json['perfil'] as List).isNotEmpty) {
+    if (json['perfil'] != null &&
+        json['perfil'] is List &&
+        (json['perfil'] as List).isNotEmpty) {
       final perfil = (json['perfil'] as List).first as Map<String, dynamic>;
       role = perfil['authority'] as String?;
     }
-    
+
     return UserModel(
       id: json['id'] as int,
-      username: json['login'] as String,  // Backend usa 'login' ao invés de 'username'
-      email: json['email'] as String? ?? '${json['login']}@gp.local', // Backend não envia email, gera um baseado no login
-      name: json['nome'] as String?,      // Backend usa 'nome' ao invés de 'name'
-      role: role,                         // Extrai do array 'perfil'
-      lastLogin: json['last_login'] != null 
+      username:
+          json['login'] as String, // Backend usa 'login' ao invés de 'username'
+      email:
+          json['email'] as String? ??
+          '${json['login']}@gp.local', // Backend não envia email, gera um baseado no login
+      name: json['nome'] as String?, // Backend usa 'nome' ao invés de 'name'
+      role: role, // Extrai do array 'perfil'
+      lastLogin: json['last_login'] != null
           ? DateTime.parse(json['last_login'] as String)
           : null,
     );

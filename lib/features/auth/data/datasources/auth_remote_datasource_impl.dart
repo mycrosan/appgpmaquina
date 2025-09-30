@@ -11,9 +11,7 @@ import 'auth_remote_datasource.dart';
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final http.Client client;
 
-  AuthRemoteDataSourceImpl({
-    required this.client,
-  });
+  AuthRemoteDataSourceImpl({required this.client});
 
   @override
   Future<AuthTokenModel> login({
@@ -24,16 +22,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final endpoint = AppConfig.instance.loginEndpoint;
       print('🔐 [LOGIN] Tentando login para: $username');
       print('🌐 [LOGIN] Endpoint: $endpoint');
-      
+
       final response = await client.post(
         Uri.parse(endpoint),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'login': username,
-          'senha': password,
-        }),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'login': username, 'senha': password}),
       );
 
       print('📡 [LOGIN] Status Code: ${response.statusCode}');
@@ -51,14 +44,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         print('🚨 [LOGIN] Erro do servidor: ${response.statusCode}');
         print('🚨 [LOGIN] Response body: ${response.body}');
         throw ServerException(
-          message: 'Erro no servidor: ${response.statusCode} - ${response.body}',
+          message:
+              'Erro no servidor: ${response.statusCode} - ${response.body}',
           statusCode: response.statusCode,
         );
       }
     } catch (e) {
       print('💥 [LOGIN] Exceção capturada: $e');
       print('💥 [LOGIN] Tipo da exceção: ${e.runtimeType}');
-      
+
       if (e is AuthenticationException || e is ServerException) {
         rethrow;
       }
@@ -72,9 +66,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final endpoint = AppConfig.instance.userProfileEndpoint;
       print('👤 [GET_CURRENT_USER] Iniciando busca de usuário atual');
       print('🌐 [GET_CURRENT_USER] Endpoint: $endpoint');
-      print('🔑 [GET_CURRENT_USER] Token: ${token.isNotEmpty ? "${token.substring(0, 20)}..." : "VAZIO"}');
+      print(
+        '🔑 [GET_CURRENT_USER] Token: ${token.isNotEmpty ? "${token.substring(0, 20)}..." : "VAZIO"}',
+      );
       print('📦 [GET_CURRENT_USER] Método: GET (sem corpo da requisição)');
-      
+
       final response = await client.get(
         Uri.parse(endpoint),
         headers: {
@@ -119,19 +115,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       final response = await client.post(
         Uri.parse(AppConfig.instance.refreshTokenEndpoint),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'refresh_token': refreshToken,
-        }),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'refresh_token': refreshToken}),
       );
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body) as Map<String, dynamic>;
         return AuthTokenModel.fromLoginResponse(jsonData);
       } else if (response.statusCode == 401) {
-        throw AuthenticationException(message: 'Refresh token inválido ou expirado');
+        throw AuthenticationException(
+          message: 'Refresh token inválido ou expirado',
+        );
       } else {
         throw ServerException(
           message: 'Erro no servidor: ${response.statusCode}',

@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../injection/presentation/bloc/injection_bloc.dart';
+import '../../../machine/presentation/bloc/registro_maquina_bloc.dart';
+import '../../../machine/presentation/bloc/registro_maquina_event.dart';
+import '../../../machine/presentation/bloc/registro_maquina_state.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/custom_button.dart';
+import '../../../../core/services/device_info_service.dart';
 import '../widgets/dashboard_card.dart';
 import '../widgets/process_status_card.dart';
 import '../widgets/quick_actions_section.dart';
@@ -21,19 +25,63 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     // Carregar processo ativo ao inicializar
-    context.read<InjectionBloc>().add(const InjectionLoadCurrentActiveProcess());
+    context.read<InjectionBloc>().add(
+      const InjectionLoadCurrentActiveProcess(),
+    );
   }
 
   void _handleLogout() {
     context.read<AuthBloc>().add(const AuthLogoutRequested());
   }
 
-  void _navigateToMachines() {
+  void _navigateToMachines() async {
+    // Obter dados reais do contexto
+    String? userId;
+    String deviceId = 'unknown_device';
+    int? registroMaquinaId;
+
+    // 1. Obter userId do AuthBloc
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthAuthenticated) {
+      userId = authState.user.id.toString();
+    }
+
+    // 2. Obter deviceId do DeviceInfoService
+    try {
+      deviceId = await DeviceInfoService.instance.getDeviceId();
+    } catch (e) {
+      // Fallback para deviceId padrão em caso de erro
+      deviceId = 'device_${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    // 3. Tentar obter registroMaquinaId da máquina atual do dispositivo
+    final registroMaquinaState = context.read<RegistroMaquinaBloc>().state;
+    if (registroMaquinaState is CurrentDeviceMachineLoaded && 
+        registroMaquinaState.currentMachine != null) {
+      registroMaquinaId = registroMaquinaState.currentMachine!.id;
+    } else {
+      // Se não há máquina atual, buscar a primeira máquina disponível
+      context.read<RegistroMaquinaBloc>().add(const GetCurrentDeviceMachineEvent());
+      
+      // Aguardar um momento para o estado ser atualizado
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final updatedState = context.read<RegistroMaquinaBloc>().state;
+      if (updatedState is CurrentDeviceMachineLoaded && 
+          updatedState.currentMachine != null) {
+        registroMaquinaId = updatedState.currentMachine!.id;
+      } else {
+        // Fallback: usar ID 1 se não conseguir obter uma máquina
+        registroMaquinaId = 1;
+      }
+    }
+
     Navigator.of(context).pushNamed(
-      '/machine-config',
+      '/machine-current-config',
       arguments: {
-        'deviceId': 'device_001', // TODO: Obter do contexto real
-        'userId': 'user_001', // TODO: Obter do contexto real
+        'registroMaquinaId': registroMaquinaId,
+        'deviceId': deviceId,
+        'userId': userId ?? 'unknown_user',
       },
     );
   }
@@ -110,7 +158,9 @@ class _HomePageState extends State<HomePage> {
         },
         child: RefreshIndicator(
           onRefresh: () async {
-            context.read<InjectionBloc>().add(const InjectionLoadCurrentActiveProcess());
+            context.read<InjectionBloc>().add(
+              const InjectionLoadCurrentActiveProcess(),
+            );
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -198,10 +248,7 @@ class _HomePageState extends State<HomePage> {
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.info_outline,
-                  color: AppColors.textSecondary,
-                ),
+                Icon(Icons.info_outline, color: AppColors.textSecondary),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -227,12 +274,10 @@ class _HomePageState extends State<HomePage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.border),
             ),
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
+            child: const Center(child: CircularProgressIndicator()),
           );
         }
-        
+
         return const SizedBox.shrink();
       },
     );
@@ -242,10 +287,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Visão Geral',
-          style: AppTextStyles.titleMedium,
-        ),
+        Text('Visão Geral', style: AppTextStyles.titleMedium),
         const SizedBox(height: 16),
         GridView.count(
           shrinkWrap: true,
@@ -301,10 +343,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Estatísticas Recentes',
-          style: AppTextStyles.titleMedium,
-        ),
+        Text('Estatísticas Recentes', style: AppTextStyles.titleMedium),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(16),
@@ -332,17 +371,10 @@ class _HomePageState extends State<HomePage> {
       children: [
         Icon(icon, color: AppColors.primary, size: 20),
         const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: AppTextStyles.bodyMedium,
-          ),
-        ),
+        Expanded(child: Text(label, style: AppTextStyles.bodyMedium)),
         Text(
           value,
-          style: AppTextStyles.dataMedium.copyWith(
-            color: AppColors.primary,
-          ),
+          style: AppTextStyles.dataMedium.copyWith(color: AppColors.primary),
         ),
       ],
     );

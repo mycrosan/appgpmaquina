@@ -85,3 +85,19 @@ class HardwareException extends AppException {
     String? code,
   }) : super(message: message, code: code);
 }
+
+/// Exceção para recursos não encontrados
+class NotFoundException extends AppException {
+  const NotFoundException({
+    required String message,
+    String? code,
+  }) : super(message: message, code: code);
+}
+
+/// Exceção para erros de autorização/permissão
+class AuthorizationException extends AppException {
+  const AuthorizationException({
+    required String message,
+    String? code,
+  }) : super(message: message, code: code);
+}

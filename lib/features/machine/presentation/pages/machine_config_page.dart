@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:developer' as developer;
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../injection_container.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/domain/entities/user.dart';
 import '../../domain/entities/matriz.dart';
 import '../../domain/entities/machine_config.dart';
+import '../../domain/entities/registro_maquina.dart';
+import '../../domain/repositories/registro_maquina_repository.dart';
 import '../bloc/machine_config_bloc.dart';
 import '../bloc/machine_config_event.dart';
 import '../bloc/machine_config_state.dart';
@@ -13,11 +18,13 @@ import '../bloc/machine_config_state.dart';
 class MachineConfigPage extends StatefulWidget {
   final String deviceId;
   final String userId;
+  final int? registroMaquinaId;
 
   const MachineConfigPage({
     super.key,
     required this.deviceId,
     required this.userId,
+    this.registroMaquinaId,
   });
 
   @override
@@ -28,22 +35,102 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
   Matriz? selectedMatriz;
   MachineConfig? currentConfig;
   List<Matriz> availableMatrizes = [];
+  List<RegistroMaquina> availableMachines = [];
+  RegistroMaquina? selectedMachine;
+  // ID do celular será capturado automaticamente
+  final String _celularId = "CEL001"; // Valor padrão para envio
 
   @override
   void initState() {
     super.initState();
-    developer.log('🏗️ Inicializando MachineConfigPage', name: 'MachineConfigUI');
+    developer.log(
+      '🏗️ Inicializando MachineConfigPage',
+      name: 'MachineConfigUI',
+    );
     developer.log('  - Device ID: ${widget.deviceId}', name: 'MachineConfigUI');
     developer.log('  - User ID: ${widget.userId}', name: 'MachineConfigUI');
     _loadData();
+    _loadMachines();
+  }
+  
+  void _loadMachines() async {
+    developer.log(
+      '🔄 Carregando máquinas disponíveis da API',
+      name: 'MachineConfigUI',
+    );
+    
+    // Importando o repositório de registro de máquinas
+    final registroMaquinaRepository = sl<RegistroMaquinaRepository>();
+    
+    // Buscando máquinas da API
+    final result = await registroMaquinaRepository.getAllMaquinas();
+    
+    result.fold(
+      (failure) {
+        developer.log(
+          '❌ Erro ao carregar máquinas: $failure',
+          name: 'MachineConfigUI',
+        );
+        // Em caso de falha, exibe mensagem de erro
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erro ao carregar máquinas. Tente novamente.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      },
+      (machines) {
+        setState(() {
+          availableMachines = machines;
+          
+          // Se registroMaquinaId foi fornecido, tenta encontrar e selecionar a máquina correspondente
+          if (widget.registroMaquinaId != null) {
+            try {
+              selectedMachine = machines.firstWhere(
+                (machine) => machine.id == widget.registroMaquinaId,
+              );
+              developer.log(
+                '🎯 Máquina selecionada automaticamente: ${selectedMachine!.nome} (ID: ${selectedMachine!.id})',
+                name: 'MachineConfigUI',
+              );
+            } catch (e) {
+              developer.log(
+                '⚠️ Máquina com ID ${widget.registroMaquinaId} não encontrada nas máquinas disponíveis',
+                name: 'MachineConfigUI',
+              );
+            }
+          }
+        });
+        developer.log(
+          '✅ ${machines.length} máquinas carregadas com sucesso',
+          name: 'MachineConfigUI',
+        );
+      },
+    );
+    // Exemplo de implementação futura:
+    // context.read<MachineConfigBloc>().add(const LoadAvailableMachines());
+  }
+  
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   void _loadData() {
-    developer.log('🔄 Carregando dados da configuração da máquina', name: 'MachineConfigUI');
-    developer.log('📋 Solicitando carregamento de matrizes disponíveis', name: 'MachineConfigUI');
+    developer.log(
+      '🔄 Carregando dados da configuração da máquina',
+      name: 'MachineConfigUI',
+    );
+    developer.log(
+      '📋 Solicitando carregamento de matrizes disponíveis',
+      name: 'MachineConfigUI',
+    );
     context.read<MachineConfigBloc>().add(const LoadAvailableMatrizes());
-    
-    developer.log('🔍 Solicitando carregamento da configuração atual', name: 'MachineConfigUI');
+
+    developer.log(
+      '🔍 Solicitando carregamento da configuração atual',
+      name: 'MachineConfigUI',
+    );
     context.read<MachineConfigBloc>().add(
       LoadCurrentMachineConfig(
         deviceId: widget.deviceId,
@@ -64,7 +151,10 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
             IconButton(
               icon: const Icon(Icons.delete),
               onPressed: () {
-                developer.log('🗑️ Usuário clicou no botão de remover configuração', name: 'MachineConfigUI');
+                developer.log(
+                  '🗑️ Usuário clicou no botão de remover configuração',
+                  name: 'MachineConfigUI',
+                );
                 _showRemoveConfigDialog();
               },
               tooltip: 'Remover configuração',
@@ -73,16 +163,37 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
       ),
       body: BlocListener<MachineConfigBloc, MachineConfigState>(
         listener: (context, state) {
-          developer.log('📡 Estado do BLoC alterado: ${state.runtimeType}', name: 'MachineConfigUI');
-          
+          developer.log(
+            '📡 Estado do BLoC alterado: ${state.runtimeType}',
+            name: 'MachineConfigUI',
+          );
+
           if (state is MatrizSelectedSuccess) {
-            developer.log('✅ Matriz selecionada com sucesso', name: 'MachineConfigUI');
-            developer.log('  - Device ID: ${state.config.deviceId}', name: 'MachineConfigUI');
-            developer.log('  - User ID: ${state.config.userId}', name: 'MachineConfigUI');
-            developer.log('  - Matriz ID: ${state.config.matrizId}', name: 'MachineConfigUI');
-            developer.log('  - Data de configuração: ${state.config.configuredAt}', name: 'MachineConfigUI');
-            developer.log('  - Configuração completa: ${state.config.toString()}', name: 'MachineConfigUI');
-            
+            developer.log(
+              '✅ Matriz selecionada com sucesso',
+              name: 'MachineConfigUI',
+            );
+            developer.log(
+              '  - Device ID: ${state.config.deviceId}',
+              name: 'MachineConfigUI',
+            );
+            developer.log(
+              '  - User ID: ${state.config.userId}',
+              name: 'MachineConfigUI',
+            );
+            developer.log(
+              '  - Matriz ID: ${state.config.matrizId}',
+              name: 'MachineConfigUI',
+            );
+            developer.log(
+              '  - Data de configuração: ${state.config.configuredAt}',
+              name: 'MachineConfigUI',
+            );
+            developer.log(
+              '  - Configuração completa: ${state.config.toString()}',
+              name: 'MachineConfigUI',
+            );
+
             // Exibir SnackBar de sucesso com mais detalhes
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -114,7 +225,10 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
                   label: 'Ver Detalhes',
                   textColor: Colors.white,
                   onPressed: () {
-                    developer.log('👁️ Usuário visualizou detalhes da configuração', name: 'MachineConfigUI');
+                    developer.log(
+                      '👁️ Usuário visualizou detalhes da configuração',
+                      name: 'MachineConfigUI',
+                    );
                   },
                 ),
               ),
@@ -123,11 +237,23 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
               currentConfig = state.config;
             });
           } else if (state is MachineConfigRemovedSuccess) {
-            developer.log('✅ Configuração removida com sucesso', name: 'MachineConfigUI');
-            developer.log('  - Device ID: ${widget.deviceId}', name: 'MachineConfigUI');
-            developer.log('  - User ID: ${widget.userId}', name: 'MachineConfigUI');
-            developer.log('  - Configuração anterior removida', name: 'MachineConfigUI');
-            
+            developer.log(
+              '✅ Configuração removida com sucesso',
+              name: 'MachineConfigUI',
+            );
+            developer.log(
+              '  - Device ID: ${widget.deviceId}',
+              name: 'MachineConfigUI',
+            );
+            developer.log(
+              '  - User ID: ${widget.userId}',
+              name: 'MachineConfigUI',
+            );
+            developer.log(
+              '  - Configuração anterior removida',
+              name: 'MachineConfigUI',
+            );
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: const Row(
@@ -148,7 +274,10 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
                   label: 'OK',
                   textColor: Colors.white,
                   onPressed: () {
-                    developer.log('👍 Usuário confirmou remoção da configuração', name: 'MachineConfigUI');
+                    developer.log(
+                      '👍 Usuário confirmou remoção da configuração',
+                      name: 'MachineConfigUI',
+                    );
                   },
                 ),
               ),
@@ -158,9 +287,15 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
               selectedMatriz = null;
             });
           } else if (state is MachineConfigError) {
-            AppLogger.error('Erro na configuração da máquina: ${state.message}', name: 'MachineConfigUI');
-            AppLogger.ui('Exibindo mensagem de erro para o usuário', name: 'MachineConfigUI');
-            
+            AppLogger.error(
+              'Erro na configuração da máquina: ${state.message}',
+              name: 'MachineConfigUI',
+            );
+            AppLogger.ui(
+              'Exibindo mensagem de erro para o usuário',
+              name: 'MachineConfigUI',
+            );
+
             // Exibe um SnackBar com mais detalhes do erro
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -170,13 +305,19 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
-                        const Text(
-                          'Erro na Configuração',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                        const Expanded(
+                          child: Text(
+                            'Erro na Configuração',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
@@ -203,47 +344,81 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
                   label: 'Tentar Novamente',
                   textColor: Colors.white,
                   onPressed: () {
-                    developer.log('🔄 Usuário solicitou tentar novamente após erro', name: 'MachineConfigUI');
+                    developer.log(
+                      '🔄 Usuário solicitou tentar novamente após erro',
+                      name: 'MachineConfigUI',
+                    );
                     _loadData();
                   },
                 ),
               ),
             );
-            
+
             // Também exibe um dialog para erros críticos
-            if (state.message.contains('Status: 5') || 
+            if (state.message.contains('Status: 5') ||
                 state.message.contains('Network error') ||
                 state.message.contains('Erro ao processar')) {
-              AppLogger.error('Erro crítico detectado, exibindo dialog', name: 'MachineConfigUI');
+              AppLogger.error(
+                'Erro crítico detectado, exibindo dialog',
+                name: 'MachineConfigUI',
+              );
               _showErrorDialog(context, state.message);
             }
           } else if (state is AvailableMatrizesLoaded) {
-            developer.log('📋 Matrizes disponíveis carregadas: ${state.matrizes.length} itens', name: 'MachineConfigUI');
+            developer.log(
+              '📋 Matrizes disponíveis carregadas: ${state.matrizes.length} itens',
+              name: 'MachineConfigUI',
+            );
             for (var matriz in state.matrizes) {
-              developer.log('  - ${matriz.nome} (${matriz.codigo})', name: 'MachineConfigUI');
+              developer.log(
+                '  - ${matriz.nome} (${matriz.codigo})',
+                name: 'MachineConfigUI',
+              );
             }
-            
+
             setState(() {
               availableMatrizes = state.matrizes;
             });
           } else if (state is CurrentMachineConfigLoaded) {
             if (state.config != null) {
-              developer.log('🔍 Configuração atual carregada', name: 'MachineConfigUI');
-              developer.log('  - Config ID: ${state.config!.id}', name: 'MachineConfigUI');
-              developer.log('  - Matriz ID: ${state.config!.matrizId}', name: 'MachineConfigUI');
-              developer.log('  - Configurada em: ${state.config!.configuredAt}', name: 'MachineConfigUI');
+              developer.log(
+                '🔍 Configuração atual carregada',
+                name: 'MachineConfigUI',
+              );
+              developer.log(
+                '  - Config ID: ${state.config!.id}',
+                name: 'MachineConfigUI',
+              );
+              developer.log(
+                '  - Matriz ID: ${state.config!.matrizId}',
+                name: 'MachineConfigUI',
+              );
+              developer.log(
+                '  - Configurada em: ${state.config!.configuredAt}',
+                name: 'MachineConfigUI',
+              );
             } else {
-              developer.log('ℹ️ Nenhuma configuração atual encontrada', name: 'MachineConfigUI');
+              developer.log(
+                'ℹ️ Nenhuma configuração atual encontrada',
+                name: 'MachineConfigUI',
+              );
             }
-            
+
             setState(() {
               currentConfig = state.config;
               if (currentConfig != null) {
-                selectedMatriz = availableMatrizes.firstWhere(
-                  (m) => m.id == currentConfig!.matrizId,
-                  orElse: () => availableMatrizes.first,
+                try {
+                  selectedMatriz = availableMatrizes.firstWhere(
+                    (m) => m.id == currentConfig!.matrizId,
+                  );
+                } catch (e) {
+                  // Se não encontrar a matriz específica, usa a primeira disponível
+                  selectedMatriz = availableMatrizes.isNotEmpty ? availableMatrizes.first : null;
+                }
+                developer.log(
+                  '🎯 Matriz selecionada automaticamente: ${selectedMatriz?.nome}',
+                  name: 'MachineConfigUI',
                 );
-                developer.log('🎯 Matriz selecionada automaticamente: ${selectedMatriz?.nome}', name: 'MachineConfigUI');
               }
             });
           }
@@ -251,13 +426,14 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
         child: BlocBuilder<MachineConfigBloc, MachineConfigState>(
           builder: (context, state) {
             if (state is MachineConfigLoading) {
-              developer.log('⏳ Exibindo indicador de carregamento', name: 'MachineConfigUI');
-              return const Center(
-                child: CircularProgressIndicator(),
+              developer.log(
+                '⏳ Exibindo indicador de carregamento',
+                name: 'MachineConfigUI',
               );
+              return const Center(child: CircularProgressIndicator());
             }
 
-            return Padding(
+            return SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,21 +461,86 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.view_module, color: AppColors.primary),
+                const Icon(Icons.settings, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text(
-                  'Selecionar Matriz',
-                  style: AppTextStyles.headlineSmall,
+                Flexible(
+                  child: Text(
+                    'Config. da Máquina', 
+                    style: AppTextStyles.headlineSmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
+            
+            // Seleção de Máquina
+            const Text('Selecione a Máquina:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            if (availableMachines.isEmpty) ...[
+              const Row(
+                children: [
+                  Icon(Icons.warning_outlined, color: AppColors.warning),
+                  SizedBox(width: 8),
+                  Flexible(
+                    child: Text('Nenhuma máquina disponível'),
+                  ),
+                ],
+              ),
+            ] else ...[
+              DropdownButtonFormField<RegistroMaquina>(
+                value: selectedMachine,
+                decoration: const InputDecoration(
+                  labelText: 'Máquina',
+                  border: OutlineInputBorder(),
+                ),
+                isExpanded: true,
+                items: availableMachines.map((maquina) {
+                  return DropdownMenuItem<RegistroMaquina>(
+                    value: maquina,
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        maquina.nome,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (RegistroMaquina? value) {
+                  if (value != null) {
+                    developer.log(
+                      '🎯 Usuário selecionou máquina: ${value.nome} (ID: ${value.id})',
+                      name: 'MachineConfigUI',
+                    );
+                  } else {
+                    developer.log(
+                      '❌ Usuário desmarcou seleção de máquina',
+                      name: 'MachineConfigUI',
+                    );
+                  }
+
+                  setState(() {
+                    selectedMachine = value;
+                  });
+                },
+              ),
+            ],
+            
+            const SizedBox(height: 24),
+            
+            // Seleção de Matriz
+            const Text('Selecione a Matriz:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             if (availableMatrizes.isEmpty) ...[
               const Row(
                 children: [
                   Icon(Icons.warning_outlined, color: AppColors.warning),
                   SizedBox(width: 8),
-                  Text('Nenhuma matriz disponível'),
+                  Flexible(
+                    child: Text('Nenhuma matriz disponível'),
+                  ),
                 ],
               ),
             ] else ...[
@@ -309,21 +550,41 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
                   labelText: 'Matriz',
                   border: OutlineInputBorder(),
                 ),
+                isExpanded: true,
                 items: availableMatrizes.map((matriz) {
                   return DropdownMenuItem<Matriz>(
                     value: matriz,
-                    child: Text('${matriz.nome} (${matriz.codigo})'),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Text(
+                        '${matriz.nome} (${matriz.codigo})',
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
                   );
                 }).toList(),
                 onChanged: (Matriz? value) {
                   if (value != null) {
-                    developer.log('🎯 Usuário selecionou matriz: ${value.nome} (ID: ${value.id})', name: 'MachineConfigUI');
-                    developer.log('  - Código: ${value.codigo}', name: 'MachineConfigUI');
-                    developer.log('  - Descrição: ${value.descricao}', name: 'MachineConfigUI');
+                    developer.log(
+                      '🎯 Usuário selecionou matriz: ${value.nome} (ID: ${value.id})',
+                      name: 'MachineConfigUI',
+                    );
+                    developer.log(
+                      '  - Código: ${value.codigo}',
+                      name: 'MachineConfigUI',
+                    );
+                    developer.log(
+                      '  - Descrição: ${value.descricao}',
+                      name: 'MachineConfigUI',
+                    );
                   } else {
-                    developer.log('❌ Usuário desmarcou seleção de matriz', name: 'MachineConfigUI');
+                    developer.log(
+                      '❌ Usuário desmarcou seleção de matriz',
+                      name: 'MachineConfigUI',
+                    );
                   }
-                  
+
                   setState(() {
                     selectedMatriz = value;
                   });
@@ -342,34 +603,55 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
 
   Widget _buildActionButtons() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Expanded(
+        Flexible(
           child: ElevatedButton.icon(
-            onPressed: selectedMatriz != null ? () {
-              developer.log('💾 Usuário clicou em Salvar Configuração', name: 'MachineConfigUI');
-              _saveConfiguration();
-            } : null,
             icon: const Icon(Icons.save),
             label: const Text('Salvar Configuração'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.textOnPrimary,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        ElevatedButton.icon(
-          onPressed: () {
-            developer.log('🔄 Usuário clicou em Atualizar dados', name: 'MachineConfigUI');
-            _loadData();
-          },
-          icon: const Icon(Icons.refresh),
-          label: const Text('Atualizar'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.secondary,
-            foregroundColor: AppColors.textOnSecondary,
-            padding: const EdgeInsets.symmetric(vertical: 12),
+          onPressed: (selectedMatriz == null || selectedMachine == null)
+              ? null
+              : () {
+                  developer.log(
+                    '💾 Usuário clicou em salvar configuração',
+                    name: 'MachineConfigUI',
+                  );
+                  developer.log(
+                    '  - Máquina selecionada: ${selectedMachine!.nome}',
+                    name: 'MachineConfigUI',
+                  );
+                  developer.log(
+                    '  - ID da Máquina: ${selectedMachine!.id}',
+                    name: 'MachineConfigUI',
+                  );
+                  developer.log(
+                    '  - Matriz selecionada: ${selectedMatriz!.nome}',
+                    name: 'MachineConfigUI',
+                  );
+                  developer.log(
+                    '  - ID da Matriz: ${selectedMatriz!.id}',
+                    name: 'MachineConfigUI',
+                  );
+                  developer.log(
+                    '  - Device ID: ${widget.deviceId}',
+                    name: 'MachineConfigUI',
+                  );
+                  developer.log(
+                    '  - User ID: ${widget.userId}',
+                    name: 'MachineConfigUI',
+                  );
+                  developer.log(
+                    '  - ID do Celular (capturado automaticamente): ${_celularId}',
+                    name: 'MachineConfigUI',
+                  );
+
+                  _saveConfiguration();
+                },
           ),
         ),
       ],
@@ -378,27 +660,65 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
 
   void _saveConfiguration() {
     if (selectedMatriz == null) {
-      developer.log('⚠️ Tentativa de salvar sem matriz selecionada', name: 'MachineConfigUI');
+      developer.log(
+        '⚠️ Tentativa de salvar sem matriz selecionada',
+        name: 'MachineConfigUI',
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecione uma matriz para continuar'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+    
+    if (selectedMachine == null) {
+      developer.log(
+        '⚠️ Tentativa de salvar sem máquina selecionada',
+        name: 'MachineConfigUI',
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecione uma máquina para continuar'),
+          backgroundColor: AppColors.error,
+        ),
+      );
       return;
     }
 
-    developer.log('💾 Iniciando salvamento da configuração', name: 'MachineConfigUI');
-    developer.log('  - Matriz selecionada: ${selectedMatriz!.nome} (ID: ${selectedMatriz!.id})', name: 'MachineConfigUI');
+    developer.log(
+      '💾 Iniciando salvamento da configuração',
+      name: 'MachineConfigUI',
+    );
+    developer.log(
+      '  - Matriz selecionada: ${selectedMatriz!.nome} (ID: ${selectedMatriz!.id})',
+      name: 'MachineConfigUI',
+    );
+    developer.log(
+      '  - Máquina selecionada: ${selectedMachine!.nome} (ID: ${selectedMachine!.id})',
+      name: 'MachineConfigUI',
+    );
     developer.log('  - Device ID: ${widget.deviceId}', name: 'MachineConfigUI');
     developer.log('  - User ID: ${widget.userId}', name: 'MachineConfigUI');
+    developer.log('  - ID do Celular (capturado automaticamente): ${_celularId}', name: 'MachineConfigUI');
 
     context.read<MachineConfigBloc>().add(
       SelectMatrizForMachine(
-        matrizId: selectedMatriz!.id.toString(),
+        matrizId: selectedMatriz!.id,
         deviceId: widget.deviceId,
         userId: widget.userId,
+        registroMaquinaId: selectedMachine!.id,
       ),
     );
   }
 
   void _showRemoveConfigDialog() {
-    developer.log('🗑️ Exibindo diálogo de confirmação para remoção', name: 'MachineConfigUI');
-    
+    developer.log(
+      '🗑️ Exibindo diálogo de confirmação para remoção',
+      name: 'MachineConfigUI',
+    );
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -410,17 +730,29 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
           actions: [
             TextButton(
               onPressed: () {
-                developer.log('❌ Usuário cancelou remoção da configuração', name: 'MachineConfigUI');
+                developer.log(
+                  '❌ Usuário cancelou remoção da configuração',
+                  name: 'MachineConfigUI',
+                );
                 Navigator.of(context).pop();
               },
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
               onPressed: () {
-                developer.log('✅ Usuário confirmou remoção da configuração', name: 'MachineConfigUI');
-                developer.log('  - Device ID: ${widget.deviceId}', name: 'MachineConfigUI');
-                developer.log('  - User ID: ${widget.userId}', name: 'MachineConfigUI');
-                
+                developer.log(
+                  '✅ Usuário confirmou remoção da configuração',
+                  name: 'MachineConfigUI',
+                );
+                developer.log(
+                  '  - Device ID: ${widget.deviceId}',
+                  name: 'MachineConfigUI',
+                );
+                developer.log(
+                  '  - User ID: ${widget.userId}',
+                  name: 'MachineConfigUI',
+                );
+
                 Navigator.of(context).pop();
                 context.read<MachineConfigBloc>().add(
                   RemoveMachineConfig(
@@ -452,17 +784,58 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
               children: [
                 const Icon(Icons.settings, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text(
-                  'Configuração Atual',
-                  style: AppTextStyles.headlineSmall,
-                ),
+                Text('Config. Atual', style: AppTextStyles.headlineSmall),
               ],
             ),
             const SizedBox(height: 16),
             if (currentConfig != null) ...[
+              // ID da Configuração
+              if (currentConfig!.id != null) ...[
+                _buildInfoRow(
+                  'ID da Configuração:',
+                  currentConfig!.id.toString(),
+                ),
+              ],
               _buildInfoRow('Dispositivo:', widget.deviceId),
-              _buildInfoRow('Usuário:', widget.userId),
-              _buildInfoRow('Matriz Configurada:', currentConfig!.matrizId.toString()),
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, authState) {
+                  String userName = widget.userId;
+                  if (authState is AuthAuthenticated) {
+                    userName = authState.user.name ?? authState.user.username;
+                  }
+                  return _buildInfoRow('Usuário:', userName);
+                },
+              ),
+              // Nome da Máquina (prioriza selectedMachine, mas também tenta buscar por registroMaquinaId)
+              if (selectedMachine != null) ...[
+                _buildInfoRow(
+                  'Nome da Máquina:',
+                  selectedMachine!.nome,
+                ),
+              ] else if (widget.registroMaquinaId != null && availableMachines.isNotEmpty) ...[
+                Builder(
+                  builder: (context) {
+                    try {
+                      final machine = availableMachines.firstWhere(
+                        (m) => m.id == widget.registroMaquinaId,
+                      );
+                      return _buildInfoRow(
+                        'Nome da Máquina:',
+                        machine.nome,
+                      );
+                    } catch (e) {
+                      return _buildInfoRow(
+                        'ID da Máquina:',
+                        widget.registroMaquinaId.toString(),
+                      );
+                    }
+                  },
+                ),
+              ],
+              _buildInfoRow(
+                'Matriz Configurada:',
+                selectedMatriz?.descricao ?? currentConfig!.matrizId.toString(),
+              ),
               _buildInfoRow(
                 'Data de Configuração:',
                 currentConfig!.configuredAt.toString().split(' ')[0],
@@ -488,19 +861,24 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 140,
+          Flexible(
+            flex: 2,
             child: Text(
               label,
               style: AppTextStyles.bodyMedium.copyWith(
                 fontWeight: FontWeight.w600,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          Expanded(
+          const SizedBox(width: 8),
+          Flexible(
+            flex: 3,
             child: Text(
-              value,
+              value, 
               style: AppTextStyles.bodyMedium,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
             ),
           ),
         ],
@@ -536,8 +914,11 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
   }
 
   void _showErrorDialog(BuildContext context, String errorMessage) {
-    developer.log('🚨 Exibindo dialog de erro crítico', name: 'MachineConfigUI');
-    
+    developer.log(
+      '🚨 Exibindo dialog de erro crítico',
+      name: 'MachineConfigUI',
+    );
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -569,16 +950,11 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
                 decoration: BoxDecoration(
                   color: AppColors.error.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.error.withOpacity(0.3),
-                  ),
+                  border: Border.all(color: AppColors.error.withOpacity(0.3)),
                 ),
                 child: Text(
                   errorMessage,
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
                 ),
               ),
               const SizedBox(height: 16),
@@ -590,13 +966,18 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
               const Text('• Verifique sua conexão com a internet'),
               const Text('• Certifique-se de que o servidor está funcionando'),
               const Text('• Tente novamente em alguns minutos'),
-              const Text('• Entre em contato com o suporte se o problema persistir'),
+              const Text(
+                '• Entre em contato com o suporte se o problema persistir',
+              ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () {
-                developer.log('🔄 Usuário escolheu tentar novamente no dialog', name: 'MachineConfigUI');
+                developer.log(
+                  '🔄 Usuário escolheu tentar novamente no dialog',
+                  name: 'MachineConfigUI',
+                );
                 Navigator.of(context).pop();
                 _loadData();
               },
@@ -604,7 +985,10 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
             ),
             ElevatedButton(
               onPressed: () {
-                developer.log('❌ Usuário fechou dialog de erro', name: 'MachineConfigUI');
+                developer.log(
+                  '❌ Usuário fechou dialog de erro',
+                  name: 'MachineConfigUI',
+                );
                 Navigator.of(context).pop();
               },
               style: ElevatedButton.styleFrom(

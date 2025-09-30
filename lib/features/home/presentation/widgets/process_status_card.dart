@@ -8,10 +8,7 @@ import '../../../../core/widgets/custom_button.dart';
 class ProcessStatusCard extends StatelessWidget {
   final ProcessoInjecao processo;
 
-  const ProcessStatusCard({
-    super.key,
-    required this.processo,
-  });
+  const ProcessStatusCard({super.key, required this.processo});
 
   @override
   Widget build(BuildContext context) {
@@ -37,10 +34,7 @@ class ProcessStatusCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                'Processo Ativo',
-                style: AppTextStyles.titleMedium,
-              ),
+              Text('Processo Ativo', style: AppTextStyles.titleMedium),
               const Spacer(),
               _buildStatusChip(),
             ],
@@ -51,11 +45,7 @@ class ProcessStatusCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildInfoItem(
-                  'ID',
-                  '#${processo.id}',
-                  Icons.tag,
-                ),
+                child: _buildInfoItem('ID', '#${processo.id}', Icons.tag),
               ),
               Expanded(
                 child: _buildInfoItem(
@@ -95,9 +85,9 @@ class ProcessStatusCard extends StatelessWidget {
                 child: CustomButton(
                   text: 'Ver Detalhes',
                   onPressed: () {
-                    Navigator.of(context).pushNamed(
-                      '/injection/process/${processo.id}',
-                    );
+                    Navigator.of(
+                      context,
+                    ).pushNamed('/injection/process/${processo.id}');
                   },
                   variant: ButtonVariant.outlined,
                   size: ButtonSize.small,
@@ -124,26 +114,22 @@ class ProcessStatusCard extends StatelessWidget {
   Widget _buildInfoItem(String label, String value, IconData icon) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 16,
-          color: AppColors.textSecondary,
-        ),
+        Icon(icon, size: 16, color: AppColors.textSecondary),
         const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: AppTextStyles.caption,
-            ),
-            Text(
-              value,
-              style: AppTextStyles.bodyMedium.copyWith(
-                fontWeight: FontWeight.w600,
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: AppTextStyles.caption),
+              Text(
+                value,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
