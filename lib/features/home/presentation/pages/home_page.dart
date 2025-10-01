@@ -236,8 +236,8 @@ class _HomePageState extends State<HomePage> {
   Widget _buildCurrentProcessSection() {
     return BlocBuilder<InjectionBloc, InjectionState>(
       builder: (context, state) {
-        if (state is InjectionActiveProcessLoaded) {
-          return ProcessStatusCard(processo: state.processo);
+        if (state is InjectionActiveProcessLoaded && state.processo != null) {
+          return ProcessStatusCard(processo: state.processo!);
         } else if (state is InjectionNoActiveProcess) {
           return Container(
             padding: const EdgeInsets.all(16),

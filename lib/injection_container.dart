@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'core/config/network_config.dart';
+import 'core/config/app_config.dart';
 import 'core/services/device_info_service.dart';
 
 // Features - Auth
@@ -49,6 +50,14 @@ import 'features/machine/presentation/bloc/registro_maquina_bloc.dart';
 
 // Features - Injection
 import 'features/injection/presentation/bloc/injection_bloc.dart';
+import 'features/injection/domain/usecases/validar_carcaca_usecase.dart';
+import 'features/injection/domain/usecases/controlar_sonoff_usecase.dart';
+import 'features/injection/domain/repositories/sonoff_repository.dart';
+import 'features/injection/data/repositories/sonoff_repository_impl.dart';
+import 'features/injection/data/datasources/sonoff_datasource.dart';
+import 'features/injection/domain/repositories/producao_repository.dart';
+import 'features/injection/data/repositories/producao_repository_impl.dart';
+import 'features/injection/data/datasources/producao_remote_datasource.dart';
 
 final sl = GetIt.instance;
 
@@ -149,7 +158,44 @@ Future<void> init() async {
 
   //! Features - Injection
   // Bloc
-  sl.registerFactory(() => InjectionBloc());
+  sl.registerFactory(
+    () => InjectionBloc(
+      validarCarcacaUseCase: sl(),
+      getCurrentMachineConfig: sl(),
+      controlarSonoffUseCase: sl(),
+    ),
+  );
+
+  // Use cases
+  sl.registerLazySingleton(
+    () => ValidarCarcacaUseCase(
+      producaoRepository: sl(),
+      machineRepository: sl(),
+    ),
+  );
+  sl.registerLazySingleton(() => ControlarSonoffUseCase(repository: sl()));
+
+  // Repositories
+  sl.registerLazySingleton<ProducaoRepository>(
+    () => ProducaoRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<SonoffRepository>(
+    () => SonoffRepositoryImpl(dataSource: sl()),
+  );
+
+  // Data sources
+  sl.registerLazySingleton<ProducaoRemoteDataSource>(
+    () => ProducaoRemoteDataSourceImpl(
+      client: sl(),
+      baseUrl: AppConfig.instance.apiBaseUrl,
+    ),
+  );
+  sl.registerLazySingleton<SonoffDataSource>(
+    () => SonoffDataSourceImpl(
+      client: sl(),
+      baseUrl: 'http://192.168.0.165', // IP e porta do Sonoff
+    ),
+  );
 
   //! Core Services
   sl.registerLazySingleton(() => DeviceInfoService.instance);

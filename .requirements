@@ -34,8 +34,8 @@ Crie uma aplicação mobile em **Flutter 3** com as seguintes especificações:
    * Usar tabela `matriz` para buscar e registrar.
 
 4. **Fluxo de Injeção de Ar**
-
-   * Quando a carcaça for validada, mostrar detalhes da matriz vinculada ao pneu.
+    Ao abrir a tela de injeção de ar o sistema vai exibir um tela com um campo de input para um numero de 6 digitos, ao informar os numeros e clicar em pesquisar o sistema buscar no endpoint `/carcaca/{codigo}` para verificar se a carcaça existe. se existir vai trazer as informaçãos da carcaca, dando ok seguira as informações abaixo
+   * Quando a carcaça for validada, mostrar detalhes da matriz vinculada ao pneu, vai validar se a matriz da carcaça bate com a matriz da máquina, se nao bater mostrar mensagem **“Máquina errada”** em destaque. se tudo certo seguir
    * Exibir botão **“Injetar ar”**.
    * Ao clicar:
 

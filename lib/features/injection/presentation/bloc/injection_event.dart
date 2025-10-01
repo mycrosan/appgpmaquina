@@ -81,14 +81,57 @@ class InjectionStartProcess extends InjectionEvent {
   List<Object?> get props => [regraId, carcacaCodigo, pressaoInicial];
 }
 
-/// Evento para pausar um processo de injeção
-class InjectionPauseProcess extends InjectionEvent {
-  final int processoId;
 
-  const InjectionPauseProcess({required this.processoId});
+
+// Novos eventos para o fluxo de injeção de ar
+/// Evento para validar carcaça
+class InjectionValidarCarcaca extends InjectionEvent {
+  final String numeroEtiqueta;
+  final String deviceId;
+  final String userId;
+
+  const InjectionValidarCarcaca({
+    required this.numeroEtiqueta,
+    required this.deviceId,
+    required this.userId,
+  });
 
   @override
-  List<Object?> get props => [processoId];
+  List<Object?> get props => [numeroEtiqueta, deviceId, userId];
+}
+
+/// Evento para iniciar injeção de ar
+class InjectionIniciarInjecaoAr extends InjectionEvent {
+  final String numeroEtiqueta;
+  final int tempoInjecao;
+
+  const InjectionIniciarInjecaoAr({
+    required this.numeroEtiqueta,
+    required this.tempoInjecao,
+  });
+
+  @override
+  List<Object?> get props => [numeroEtiqueta, tempoInjecao];
+}
+
+/// Evento para atualizar timer
+class InjectionUpdateTimer extends InjectionEvent {
+  final int tempoRestante;
+
+  const InjectionUpdateTimer({required this.tempoRestante});
+
+  @override
+  List<Object?> get props => [tempoRestante];
+}
+
+/// Evento para finalizar injeção de ar
+class InjectionFinalizarInjecaoAr extends InjectionEvent {
+  const InjectionFinalizarInjecaoAr();
+}
+
+/// Evento para cancelar injeção de ar
+class InjectionCancelarInjecaoAr extends InjectionEvent {
+  const InjectionCancelarInjecaoAr();
 }
 
 /// Evento para retomar um processo de injeção
