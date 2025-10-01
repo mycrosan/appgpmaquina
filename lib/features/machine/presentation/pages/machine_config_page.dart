@@ -440,9 +440,12 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
                 children: [
                   _buildCurrentConfigSection(),
                   const SizedBox(height: 24),
-                  _buildMatrizSelectionSection(),
-                  const SizedBox(height: 24),
-                  _buildActionButtons(),
+                  // Só mostra o card de seleção quando não há configuração atual
+                  if (currentConfig == null) ...[
+                    _buildMatrizSelectionSection(),
+                    const SizedBox(height: 24),
+                    _buildActionButtons(),
+                  ],
                 ],
               ),
             );
