@@ -207,24 +207,37 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
   }
 
   void _onFinalizarInjecaoAr(InjectionFinalizarInjecaoAr event, Emitter<InjectionState> emit) async {
+    print('🏁 [INJECTION] Finalizando injeção de ar...');
     _timer?.cancel();
+    print('⏱️ [INJECTION] Timer cancelado');
     
     // Desligar o relé do Sonoff
     if (_controlarSonoffUseCase != null) {
+      print('🔌 [INJECTION] Desligando relé do Sonoff...');
       try {
-        await _controlarSonoffUseCase!.desligarRele();
+        final releStatus = await _controlarSonoffUseCase!.desligarRele();
+        print('📡 [INJECTION] Status do relé após desligar: $releStatus');
+        if (releStatus) {
+          print('✅ [INJECTION] Relé desligado com sucesso!');
+        } else {
+          print('⚠️ [INJECTION] AVISO: Falha ao desligar relé');
+        }
       } catch (e) {
         // Log do erro mas não impede a finalização
-        print('Erro ao desligar relé: $e');
+        print('💥 [INJECTION] ERRO ao desligar relé: $e');
       }
+    } else {
+      print('⚠️ [INJECTION] AVISO: ControlarSonoffUseCase é null - relé não será desligado');
     }
     
     final currentState = state;
     if (currentState is InjectionInjecaoArEmAndamento) {
+      print('🎯 [INJECTION] Emitindo estado de injeção finalizada...');
       emit(InjectionInjecaoArFinalizada(
         numeroEtiqueta: currentState.numeroEtiqueta,
         sucesso: true,
       ));
+      print('✅ [INJECTION] Injeção finalizada com sucesso! Pneu pronto: ${currentState.numeroEtiqueta}');
     }
   }
 

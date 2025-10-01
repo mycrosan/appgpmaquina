@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/custom_button.dart';
@@ -28,11 +29,14 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   bool _isRunning = false;
+  bool _isFinished = false;
+  late AudioPlayer _audioPlayer;
 
   @override
   void initState() {
     super.initState();
     _tempoRestante = widget.tempoInjecao;
+    _audioPlayer = AudioPlayer();
     
     _progressController = AnimationController(
       duration: Duration(seconds: widget.tempoInjecao),
@@ -60,6 +64,7 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
     _timer.cancel();
     _progressController.dispose();
     _pulseController.dispose();
+    _audioPlayer.dispose();
     super.dispose();
   }
 
@@ -104,11 +109,32 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
     _startTimer();
   }
 
-  void _finalizarInjecao() {
+  void _finalizarInjecao() async {
+    print('🎯 [TIMER] Finalizando injeção - iniciando efeitos visuais e sonoros');
     _timer.cancel();
     _progressController.stop();
-    _pulseController.stop();
     
+    // Configurar estado de finalizado
+    setState(() {
+      _isFinished = true;
+      _isRunning = false;
+    });
+    
+    // Configurar efeito piscante mais rápido
+    _pulseController.duration = const Duration(milliseconds: 300);
+    _pulseController.repeat(reverse: true);
+    print('✨ [TIMER] Efeito piscante ativado');
+    
+    // Tocar som de alerta
+    try {
+      print('🔊 [TIMER] Reproduzindo som de alerta...');
+      await _audioPlayer.play(AssetSource('sounds/alert.aiff'));
+      print('✅ [TIMER] Som de alerta reproduzido com sucesso');
+    } catch (e) {
+      print('💥 [TIMER] ERRO ao reproduzir som: $e');
+    }
+    
+    // Enviar evento para o Bloc
     context.read<InjectionBloc>().add(
       const InjectionFinalizarInjecaoAr(),
     );
@@ -131,7 +157,9 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
   }
 
   Color _getTimerColor() {
-    if (_tempoRestante <= 10) {
+    if (_isFinished) {
+      return AppColors.success; // Verde quando finalizado
+    } else if (_tempoRestante <= 10) {
       return AppColors.error;
     } else if (_tempoRestante <= 30) {
       return AppColors.warning;
@@ -152,16 +180,18 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
       body: BlocListener<InjectionBloc, InjectionState>(
         listener: (context, state) {
           if (state is InjectionInjecaoArFinalizada) {
-            Navigator.of(context).popUntil((route) => route.isFirst);
+            print('🎉 [TIMER] Estado de injeção finalizada recebido - mantendo na tela com efeito piscante');
+            // Não navegar automaticamente - manter na tela com efeito piscante
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
                   state.sucesso 
-                      ? 'Injeção finalizada com sucesso!'
+                      ? '🎉 Pneu pronto! Injeção finalizada com sucesso!'
                       : 'Injeção finalizada com falha',
                 ),
                 backgroundColor: state.sucesso ? AppColors.success : AppColors.error,
                 behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 5),
               ),
             );
           } else if (state is InjectionInjecaoArCancelada) {
@@ -291,12 +321,16 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      _isRunning ? Icons.play_arrow : Icons.pause,
+                      _isFinished 
+                          ? Icons.check_circle 
+                          : (_isRunning ? Icons.play_arrow : Icons.pause),
                       color: _getTimerColor(),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      _isRunning ? 'Injeção em andamento...' : 'Injeção pausada',
+                      _isFinished 
+                          ? '🎉 Pneu Pronto!' 
+                          : (_isRunning ? 'Injeção em andamento...' : 'Injeção pausada'),
                       style: AppTextStyles.titleMedium.copyWith(
                         color: _getTimerColor(),
                         fontWeight: FontWeight.w600,
@@ -309,27 +343,34 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
               const SizedBox(height: 24),
               
               // Botões de controle
-              Row(
-                children: [
-                  Expanded(
-                    child: CustomButton(
-                      text: 'Cancelar',
-                      onPressed: () => _showCancelDialog(),
-                      backgroundColor: AppColors.error,
-                      icon: Icons.stop,
+              _isFinished
+                  ? CustomButton(
+                      text: 'Voltar',
+                      onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                      backgroundColor: AppColors.primary,
+                      icon: Icons.home,
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: CustomButton(
+                            text: 'Cancelar',
+                            onPressed: () => _showCancelDialog(),
+                            backgroundColor: AppColors.error,
+                            icon: Icons.stop,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: CustomButton(
+                            text: _isRunning ? 'Pausar' : 'Retomar',
+                            onPressed: _isRunning ? _pausarTimer : _retomarTimer,
+                            backgroundColor: _isRunning ? AppColors.warning : AppColors.success,
+                            icon: _isRunning ? Icons.pause : Icons.play_arrow,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: CustomButton(
-                      text: _isRunning ? 'Pausar' : 'Retomar',
-                      onPressed: _isRunning ? _pausarTimer : _retomarTimer,
-                      backgroundColor: _isRunning ? AppColors.warning : AppColors.success,
-                      icon: _isRunning ? Icons.pause : Icons.play_arrow,
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
