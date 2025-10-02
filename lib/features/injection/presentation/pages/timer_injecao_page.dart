@@ -128,13 +128,14 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
     // Tocar som de alerta
     try {
       print('🔊 [TIMER] Reproduzindo som de alerta...');
-      await _audioPlayer.play(AssetSource('sounds/alert.aiff'));
+      await _audioPlayer.play(AssetSource('sounds/alert.wav'));
       print('✅ [TIMER] Som de alerta reproduzido com sucesso');
     } catch (e) {
       print('💥 [TIMER] ERRO ao reproduzir som: $e');
     }
     
     // Enviar evento para o Bloc
+    print('📤 [TIMER] Dispatch InjectionFinalizarInjecaoAr para o Bloc');
     context.read<InjectionBloc>().add(
       const InjectionFinalizarInjecaoAr(),
     );

@@ -14,28 +14,33 @@ class GetCurrentUser implements UseCaseNoParams<User> {
 
   @override
   Future<Either<Failure, User>> call() async {
-    // Primeiro verifica se o token ainda é válido
-    final tokenValidResult = await repository.isTokenValid();
+    // Primeiro verifica se o usuário está autenticado
+    final isAuthenticatedResult = await repository.isAuthenticated();
     
-    return tokenValidResult.fold(
+    return isAuthenticatedResult.fold(
       (failure) => Left(failure),
-      (isValid) async {
-        if (!isValid) {
-          // Tenta renovar o token
-          final refreshResult = await repository.refreshToken();
+      (isAuthenticated) async {
+        if (!isAuthenticated) {
+          // Tenta fazer login automático se há credenciais salvas
+          final autoLoginResult = await repository.tryAutoLogin();
           
-          return refreshResult.fold(
+          return autoLoginResult.fold(
             (failure) => Left(AuthenticationFailure(
-              message: 'Sessão expirada. Faça login novamente.',
+              message: 'Usuário não autenticado. Faça login.',
             )),
-            (newToken) async {
-              // Com o token renovado, obtém o usuário atual
+            (token) async {
+              if (token == null) {
+                return Left(AuthenticationFailure(
+                  message: 'Usuário não autenticado. Faça login.',
+                ));
+              }
+              // Com o token obtido, obtém o usuário atual
               return await repository.getCurrentUser();
             },
           );
         }
 
-        // Token válido, obtém o usuário atual
+        // Usuário autenticado, obtém o usuário atual
         return await repository.getCurrentUser();
       },
     );

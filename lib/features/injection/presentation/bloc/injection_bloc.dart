@@ -8,6 +8,10 @@ import '../../domain/usecases/controlar_sonoff_usecase.dart';
 import '../../../machine/domain/usecases/get_current_machine_config.dart';
 import '../../../../core/services/device_info_service.dart';
 import '../../../../core/errors/failures.dart';
+import '../../data/datasources/vulcanizacao_remote_datasource.dart';
+import '../../data/models/pneu_vulcanizado_create_dto.dart';
+import '../../data/models/pneu_vulcanizado_response_dto.dart';
+import '../../../auth/domain/usecases/get_current_user.dart';
 
 part 'injection_event.dart';
 part 'injection_state.dart';
@@ -18,16 +22,29 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
   final ValidarCarcacaUseCase? _validarCarcacaUseCase;
   final GetCurrentMachineConfig? _getCurrentMachineConfig;
   final ControlarSonoffUseCase? _controlarSonoffUseCase;
+  final VulcanizacaoRemoteDataSource? _vulcanizacaoDataSource;
+  final GetCurrentUser? _getCurrentUser;
   Timer? _timer;
+  PneuVulcanizadoResponseDTO? _currentPneuVulcanizado;
+  int? _currentProducaoId;
 
   InjectionBloc({
     ValidarCarcacaUseCase? validarCarcacaUseCase,
     GetCurrentMachineConfig? getCurrentMachineConfig,
     ControlarSonoffUseCase? controlarSonoffUseCase,
+    VulcanizacaoRemoteDataSource? vulcanizacaoDataSource,
+    GetCurrentUser? getCurrentUser,
   }) : _validarCarcacaUseCase = validarCarcacaUseCase,
        _getCurrentMachineConfig = getCurrentMachineConfig,
        _controlarSonoffUseCase = controlarSonoffUseCase,
+       _vulcanizacaoDataSource = vulcanizacaoDataSource,
+       _getCurrentUser = getCurrentUser,
        super(InjectionInitial()) {
+    // Debug logs para verificar dependências
+    print('🔧 [INJECTION] Inicializando InjectionBloc...');
+    print('🔧 [INJECTION] VulcanizacaoDataSource: ${_vulcanizacaoDataSource != null ? "✅ Disponível" : "❌ Nulo"}');
+    print('🔧 [INJECTION] GetCurrentUser: ${_getCurrentUser != null ? "✅ Disponível" : "❌ Nulo"}');
+    print('🔧 [INJECTION] ControlarSonoffUseCase: ${_controlarSonoffUseCase != null ? "✅ Disponível" : "❌ Nulo"}');
     on<InjectionLoadRegras>(_onLoadRegras);
     on<InjectionLoadCurrentActiveProcess>(_onLoadCurrentActiveProcess);
     on<InjectionLoadProcessesByStatus>(_onLoadProcessesByStatus);
@@ -124,12 +141,18 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
 
       result.fold(
         (failure) => emit(InjectionCarcacaValidationError(message: _getFailureMessage(failure))),
-        (validacao) => emit(InjectionCarcacaValidada(
-          numeroEtiqueta: event.numeroEtiqueta,
-          matrizDescricao: validacao.matriz.descricao,
-          tempoInjecao: validacao.tempoInjecao,
-          isMatrizCompativel: validacao.isMatrizCompativel,
-        )),
+        (validacao) {
+          // Armazenar producaoId real para uso na criação do pneu vulcanizado
+          _currentProducaoId = validacao.producaoResponse.id;
+          print('🧩 [INJECTION] producaoId definido: $_currentProducaoId');
+
+          emit(InjectionCarcacaValidada(
+            numeroEtiqueta: event.numeroEtiqueta,
+            matrizDescricao: validacao.matriz.descricao,
+            tempoInjecao: validacao.tempoInjecao,
+            isMatrizCompativel: validacao.isMatrizCompativel,
+          ));
+        },
       );
     } catch (e) {
       emit(InjectionCarcacaValidationError(message: e.toString()));
@@ -141,7 +164,55 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
     emit(InjectionLoading());
     
     try {
-      // Ligar o relé do Sonoff
+      // 1. Criar registro de pneu vulcanizado com status INICIADO
+      print('💾 [INJECTION] Criando registro de pneu vulcanizado na API...');
+      print('🧩 [INJECTION] producaoId atual: ${_currentProducaoId ?? "❌ Nulo"}');
+      if (_vulcanizacaoDataSource != null && _getCurrentUser != null) {
+        try {
+          // Obter usuário atual
+          final userResult = await _getCurrentUser!.call();
+          final userId = userResult.fold(
+            (failure) {
+              print('⚠️ [INJECTION] Erro ao obter usuário atual: ${failure.toString()}');
+              return 1; // Fallback para usuário ID 1
+            },
+            (user) => user.id,
+          );
+
+          // Criar DTO para registro de pneu vulcanizado
+          if (_currentProducaoId == null) {
+            print('⚠️ [INJECTION] AVISO: producaoId não definido. Pule a criação na API.');
+          } else {
+            final createDto = PneuVulcanizadoCreateDTO(
+              usuarioId: userId,
+              producaoId: _currentProducaoId!,
+            );
+
+            // Criar registro na API
+            final pneuVulcanizado = await _vulcanizacaoDataSource!.criarPneuVulcanizado(createDto);
+            _currentPneuVulcanizado = pneuVulcanizado;
+            print('✅ [INJECTION] Registro de pneu vulcanizado criado com ID: ${pneuVulcanizado.id}');
+            print('🔍 [INJECTION] _currentPneuVulcanizado definido: ${_currentPneuVulcanizado?.id}');
+          }
+        } catch (apiError) {
+          print('💥 [INJECTION] ERRO ao criar registro de pneu vulcanizado: $apiError');
+          final apiMsg = apiError.toString();
+          // Validação: não permitir iniciar nova injeção se já existir um pneu vulcanizado para usuário+produção
+          if (apiMsg.contains('Já existe um pneu vulcanizado')) {
+            print('❌ [INJECTION] Validação: já existe pneu vulcanizado para este usuário e produção. Abortando início da injeção.');
+            emit(const InjectionError(
+              message: 'Já existe um pneu vulcanizado para este usuário e produção. Finalize o processo existente antes de iniciar outro.',
+            ));
+            return;
+          }
+          // Outros erros: permitir continuar (sem registro na API)
+          print('⚠️ [INJECTION] Continuando processo sem registro na API...');
+        }
+      } else {
+        print('⚠️ [INJECTION] AVISO: VulcanizacaoDataSource ou GetCurrentUser não disponível');
+      }
+
+      // 2. Ligar o relé do Sonoff
       print('🔌 [INJECTION] Verificando controle do Sonoff...');
       if (_controlarSonoffUseCase != null) {
         print('✅ [INJECTION] ControlarSonoffUseCase disponível, tentando ligar relé...');
@@ -164,7 +235,7 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
         print('⚠️ [INJECTION] AVISO: ControlarSonoffUseCase é null - relé não será controlado');
       }
 
-      // Iniciar timer de injeção
+      // 3. Iniciar timer de injeção
       print('⏱️ [INJECTION] Configurando timer de injeção...');
       _timer?.cancel();
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -211,6 +282,62 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
     _timer?.cancel();
     print('⏱️ [INJECTION] Timer cancelado');
     
+    // Finalizar registro de pneu vulcanizado na API
+    print('💾 [INJECTION] Finalizando registro de pneu vulcanizado na API...');
+    print('🔍 [INJECTION] Estado das dependências:');
+    print('🔍 [INJECTION] _vulcanizacaoDataSource: ${_vulcanizacaoDataSource != null ? "✅ Disponível" : "❌ Nulo"}');
+    print('🔍 [INJECTION] _currentPneuVulcanizado: ${_currentPneuVulcanizado != null ? "✅ ID: ${_currentPneuVulcanizado!.id}" : "❌ Nulo"}');
+    
+    // Fallback: tentar localizar o pneu iniciado por producaoId quando o ID não está disponível
+    if (_vulcanizacaoDataSource != null && _currentPneuVulcanizado == null && _currentProducaoId != null) {
+      try {
+        print('🔎 [INJECTION] Buscando pneus INICIADOS para fallback por producaoId=$_currentProducaoId');
+        final iniciados = await _vulcanizacaoDataSource!.listarPneusVulcanizados(status: 'INICIADO');
+        PneuVulcanizadoResponseDTO? encontrado;
+        for (final pneu in iniciados) {
+          if (pneu.producaoId == _currentProducaoId) {
+            encontrado = pneu;
+            break;
+          }
+        }
+        if (encontrado != null) {
+          print('🔗 [INJECTION] Pneu iniciado encontrado (ID=${encontrado.id}). Tentando finalizar via fallback...');
+          try {
+            print('🔁 [INJECTION] Enviando ID da vulcanização localizada por producaoId (${_currentProducaoId}): ${encontrado.id} para atualização (finalizar)');
+            print('📤 [INJECTION] Chamando finalizarPneuVulcanizado(id=${encontrado.id}) via fallback');
+            final finalizado = await _vulcanizacaoDataSource!.finalizarPneuVulcanizado(encontrado.id);
+            print('✅ [INJECTION] Finalização via fallback concluída! ID: ${finalizado.id}, Status: ${finalizado.status}');
+            _currentPneuVulcanizado = finalizado;
+          } catch (apiErr) {
+            print('💥 [INJECTION] ERRO ao finalizar via fallback: $apiErr');
+          }
+        } else {
+          print('⚠️ [INJECTION] Nenhum pneu INICIADO encontrado para producaoId=$_currentProducaoId');
+        }
+      } catch (listErr) {
+        print('💥 [INJECTION] ERRO ao listar pneus INICIADOS para fallback: $listErr');
+      }
+    }
+    if (_vulcanizacaoDataSource != null && _currentPneuVulcanizado != null) {
+      try {
+        print('🔁 [INJECTION] Enviando ID da vulcanização criada no início: ${_currentPneuVulcanizado!.id} para atualização (finalizar)');
+        print('📤 [INJECTION] Chamando finalizarPneuVulcanizado(id=${_currentPneuVulcanizado!.id})');
+        final pneuFinalizado = await _vulcanizacaoDataSource!.finalizarPneuVulcanizado(_currentPneuVulcanizado!.id);
+        print('✅ [INJECTION] Pneu vulcanizado finalizado com sucesso! ID: ${pneuFinalizado.id}, Status: ${pneuFinalizado.status}');
+        _currentPneuVulcanizado = pneuFinalizado;
+      } catch (apiError) {
+        print('💥 [INJECTION] ERRO ao finalizar registro de pneu vulcanizado: $apiError');
+        // Continuar com o processo mesmo se a API falhar
+        print('⚠️ [INJECTION] Continuando processo mesmo com erro na API...');
+      }
+    } else {
+      print('⚠️ [INJECTION] AVISO: VulcanizacaoDataSource não disponível ou nenhum pneu vulcanizado ativo');
+    }
+    
+    // Limpar referência do pneu vulcanizado atual APÓS finalização na API
+    _currentPneuVulcanizado = null;
+    print('🧹 [INJECTION] Referência do pneu vulcanizado limpa');
+    
     // Desligar o relé do Sonoff
     if (_controlarSonoffUseCase != null) {
       print('🔌 [INJECTION] Desligando relé do Sonoff...');
@@ -247,7 +374,7 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
     // Desligar o relé do Sonoff
     if (_controlarSonoffUseCase != null) {
       try {
-        await _controlarSonoffUseCase!.desligarRele();
+        await _controlarSonoffUseCase.desligarRele();
       } catch (e) {
         // Log do erro mas não impede o cancelamento
         print('Erro ao desligar relé: $e');

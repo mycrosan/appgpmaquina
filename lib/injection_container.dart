@@ -58,6 +58,9 @@ import 'features/injection/data/datasources/sonoff_datasource.dart';
 import 'features/injection/domain/repositories/producao_repository.dart';
 import 'features/injection/data/repositories/producao_repository_impl.dart';
 import 'features/injection/data/datasources/producao_remote_datasource.dart';
+import 'features/injection/data/datasources/vulcanizacao_remote_datasource.dart';
+import 'features/injection/data/datasources/vulcanizacao_remote_datasource_impl.dart';
+import 'features/auth/domain/usecases/get_current_user.dart';
 
 final sl = GetIt.instance;
 
@@ -68,6 +71,7 @@ Future<void> init() async {
 
   // Use cases
   sl.registerLazySingleton(() => Login(sl()));
+  sl.registerLazySingleton(() => GetCurrentUser(sl()));
 
   // Repository
   sl.registerLazySingleton<AuthRepository>(
@@ -163,6 +167,8 @@ Future<void> init() async {
       validarCarcacaUseCase: sl(),
       getCurrentMachineConfig: sl(),
       controlarSonoffUseCase: sl(),
+      vulcanizacaoDataSource: sl(),
+      getCurrentUser: sl(),
     ),
   );
 
@@ -195,6 +201,9 @@ Future<void> init() async {
       client: sl(),
       baseUrl: 'http://192.168.0.165', // IP e porta do Sonoff
     ),
+  );
+  sl.registerLazySingleton<VulcanizacaoRemoteDataSource>(
+    () => VulcanizacaoRemoteDataSourceImpl(dio: sl()),
   );
 
   //! Core Services
