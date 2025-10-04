@@ -68,3 +68,10 @@ Configure pipeline automatizada (GitHub Actions ou GitLab CI) que deve incluir:
 - **FVM é OBRIGATÓRIO** - todos os comandos devem usar `fvm flutter` 
 - Siga todos os princípios acima para garantir qualidade, manutenibilidade e escalabilidade do código
 - Mantenha a versão do Flutter consistente entre todos os desenvolvedores usando o arquivo `.fvmrc`
+
+## 8. Execução do Projeto (Diretriz Obrigatória)
+
+- Nunca executar o projeto pelo navegador (Flutter Web). Evite comandos como:
+  - `flutter run -d chrome`, `flutter run -d web-server`, `flutter run -d edge`, ou equivalentes.
+- Preferir sempre execução em dispositivos/emuladores Android (`-d <android>`), iOS (`-d <ios>`), ou desktop (macOS) quando aplicável.
+- Motivo: recursos críticos (biometria, integração nativa, permissões) não são suportados de forma adequada no ambiente web.

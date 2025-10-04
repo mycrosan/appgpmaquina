@@ -4,6 +4,9 @@ import '../../domain/entities/user.dart';
 import '../../domain/entities/auth_token.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/login.dart';
+import '../../domain/usecases/login_with_biometrics.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../../core/errors/failures.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
@@ -12,12 +15,19 @@ part 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository authRepository;
   final Login loginUseCase;
+  final LoginWithBiometrics loginWithBiometricsUseCase;
 
-  AuthBloc({required this.authRepository, required this.loginUseCase})
+  AuthBloc({
+    required this.authRepository,
+    required this.loginUseCase,
+    required this.loginWithBiometricsUseCase,
+  })
     : super(AuthInitial()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<AuthLoginRequested>(_onAuthLoginRequested);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
+    on<AuthBiometricLoginRequested>(_onAuthBiometricLoginRequested);
+    on<AuthSetBiometricEnabled>(_onAuthSetBiometricEnabled);
   }
 
   Future<void> _onAuthCheckRequested(
@@ -90,6 +100,48 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
+  Future<void> _onAuthBiometricLoginRequested(
+    AuthBiometricLoginRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    AppLogger.auth('Evento recebido: AuthBiometricLoginRequested', name: 'Biometric');
+    emit(AuthLoading());
+
+    try {
+      final result = await loginWithBiometricsUseCase();
+      result.fold(
+        (failure) {
+          final message = _getFailureMessage(failure);
+          AppLogger.error('Falha no login biométrico: $message', name: 'Biometric');
+          emit(AuthUnauthenticated(message: message));
+        },
+        (user) {
+          final display = user.username ?? user.name ?? user.email ?? user.id?.toString() ?? 'desconhecido';
+          AppLogger.success('Login biométrico bem-sucedido para $display', name: 'Biometric');
+          emit(AuthAuthenticated(user: user));
+        },
+      );
+    } catch (e) {
+      AppLogger.error('Exceção ao processar login biométrico', name: 'Biometric', error: e);
+      emit(AuthUnauthenticated(message: e.toString()));
+    }
+  }
+
+  Future<void> _onAuthSetBiometricEnabled(
+    AuthSetBiometricEnabled event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      AppLogger.auth('Atualizando preferência de biometria para: ${event.enabled}', name: 'Biometric');
+      await authRepository.setBiometricEnabled(event.enabled);
+      AppLogger.success('Preferência de biometria atualizada: ${event.enabled}', name: 'Biometric');
+      // Não altera estado de autenticação; apenas persiste preferência
+    } catch (_) {
+      AppLogger.error('Erro ao atualizar preferência de biometria', name: 'Biometric');
+      // Ignora erros silenciosamente para não quebrar fluxo de login
+    }
+  }
+
   Future<void> _loadCurrentUser(Emitter<AuthState> emit) async {
     try {
       final result = await authRepository.getCurrentUser();
@@ -128,14 +180,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   String _getFailureMessage(dynamic failure) {
-    if (failure.toString().contains('AuthenticationFailure')) {
-      return 'Credenciais inválidas';
-    } else if (failure.toString().contains('NetworkFailure')) {
-      return 'Erro de conexão';
-    } else if (failure.toString().contains('ServerFailure')) {
-      return 'Erro do servidor';
+    // Prioriza mensagens detalhadas vindas dos Failures para exibir o body do servidor
+    if (failure is AuthenticationFailure) {
+      return failure.message;
+    } else if (failure is NetworkFailure) {
+      return failure.message;
+    } else if (failure is ServerFailure) {
+      return failure.message;
+    } else if (failure is CacheFailure) {
+      return failure.message;
+    } else if (failure is AuthorizationFailure) {
+      return failure.message;
     } else {
-      return 'Erro inesperado';
+      // Fallback genérico
+      return failure?.toString() ?? 'Erro inesperado';
     }
   }
 }

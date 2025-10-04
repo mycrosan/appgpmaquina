@@ -28,6 +28,7 @@ class ConfiguracaoFormWidget extends StatefulWidget {
 class _ConfiguracaoFormWidgetState extends State<ConfiguracaoFormWidget> {
   final _formKey = GlobalKey<FormState>();
   final _descricaoController = TextEditingController();
+  String _matrizSearchQuery = '';
   
   Matriz? _matrizSelecionada;
   List<Matriz> _matrizes = [];
@@ -43,6 +44,122 @@ class _ConfiguracaoFormWidgetState extends State<ConfiguracaoFormWidget> {
   void dispose() {
     _descricaoController.dispose();
     super.dispose();
+  }
+
+  void _openMatrizSearch() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        String query = _matrizSearchQuery;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final List<Matriz> filtered = _matrizes.where((m) {
+              final q = query.trim().toLowerCase();
+              if (q.isEmpty) return true;
+              return (m.nome.toLowerCase().contains(q) ||
+                      m.codigo.toLowerCase().contains(q));
+            }).toList();
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.view_module, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Selecionar Matriz',
+                          style: AppTextStyles.titleMedium.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Pesquisar matriz',
+                        hintText: 'Digite nome ou código',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onChanged: (value) {
+                        setModalState(() {
+                          query = value;
+                          _matrizSearchQuery = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    if (_carregandoMatrizes)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      )
+                    else if (filtered.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(
+                          'Nenhuma matriz encontrada',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final m = filtered[index];
+                            final selected = _matrizSelecionada?.id == m.id;
+                            return ListTile(
+                              leading: const Icon(Icons.widgets_outlined),
+                              title: Text('${m.nome} (${m.codigo})'),
+                              trailing: selected
+                                  ? const Icon(Icons.check, color: AppColors.primary)
+                                  : null,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                setState(() {
+                                  _matrizSelecionada = m;
+                                  _matrizSearchQuery = '';
+                                });
+                                developer.log('📋 Matriz selecionada: ${m.nome}', name: 'ConfiguracaoFormWidget');
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _carregarMatrizes() {
@@ -124,36 +241,41 @@ class _ConfiguracaoFormWidgetState extends State<ConfiguracaoFormWidget> {
               ),
               const SizedBox(height: 24),
 
-              // Seleção de Matriz
-              DropdownButtonFormField<Matriz>(
-                value: _matrizSelecionada,
-                decoration: const InputDecoration(
-                  labelText: 'Matriz *',
-                  hintText: 'Selecione uma matriz',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.view_module),
-                ),
-                items: _carregandoMatrizes 
-                    ? []
-                    : _matrizes.map((matriz) {
-                        return DropdownMenuItem<Matriz>(
-                          value: matriz,
-                          child: Text('${matriz.nome} (${matriz.codigo})'),
-                        );
-                      }).toList(),
-                onChanged: _carregandoMatrizes 
-                    ? null 
-                    : (value) {
-                        setState(() {
-                          _matrizSelecionada = value;
-                        });
-                        developer.log('📋 Matriz selecionada: ${value?.nome}', name: 'ConfiguracaoFormWidget');
-                      },
-                validator: (value) {
-                  if (value == null) {
+              // Seleção de Matriz com pesquisa
+              FormField<Matriz>(
+                validator: (_) {
+                  if (_matrizSelecionada == null) {
                     return 'Por favor, selecione uma matriz';
                   }
                   return null;
+                },
+                builder: (state) {
+                  return InkWell(
+                    onTap: _carregandoMatrizes ? null : _openMatrizSearch,
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: 'Matriz *',
+                        hintText: 'Selecione uma matriz',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.view_module),
+                        suffixIcon: const Icon(Icons.search),
+                        errorText: state.errorText,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(
+                          _matrizSelecionada == null
+                              ? 'Toque para pesquisar'
+                              : '${_matrizSelecionada!.nome} (${_matrizSelecionada!.codigo})',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: _matrizSelecionada == null
+                                ? AppColors.textSecondary
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
                 },
               ),
               

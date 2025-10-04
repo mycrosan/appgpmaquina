@@ -28,7 +28,7 @@ class QuickActionsSection extends StatelessWidget {
               child: _buildActionCard(
                 context,
                 'Novo Processo',
-                'Iniciar nova injeção',
+    'Iniciar nova vulcanização',
                 Icons.play_arrow,
                 AppColors.primary,
                 () {
@@ -144,18 +144,13 @@ class QuickActionsSection extends StatelessWidget {
     // TODO: Implementar navegação para nova injeção
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Navegação para novo processo em desenvolvimento'),
+        content: Text('Navegação para nova vulcanização em desenvolvimento'),
       ),
     );
   }
 
   void _navigateToHistory(BuildContext context) {
-    // TODO: Implementar navegação para histórico
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Navegação para histórico em desenvolvimento'),
-      ),
-    );
+    Navigator.of(context).pushNamed('/history');
   }
 
   void _navigateToSettings(BuildContext context) {

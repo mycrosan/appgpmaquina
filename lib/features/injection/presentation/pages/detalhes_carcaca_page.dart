@@ -92,7 +92,7 @@ class DetalhesCarcacaPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       _buildInfoRow(
-                        'Tempo de Injeção:',
+                        'Tempo de Vulcanização:',
                         '${tempoInjecao}s',
                         Icons.timer,
                       ),
@@ -149,7 +149,7 @@ class DetalhesCarcacaPage extends StatelessWidget {
               // Botões de ação
               if (isMatrizCompativel) ...[
                 CustomButton(
-                  text: 'Iniciar Injeção de Ar',
+              text: 'Iniciar Vulcanização',
                   onPressed: () {
                     print('🖱️ [UI] Usuário clicou em "Iniciar Injeção de Ar"');
                     print('📋 [UI] Dados: etiqueta=$numeroEtiqueta, tempo=${tempoInjecao}s');

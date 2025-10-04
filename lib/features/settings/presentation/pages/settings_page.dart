@@ -4,6 +4,7 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/custom_button.dart';
+import 'relay_settings_page.dart';
 
 /// Tela de configurações da aplicação
 class SettingsPage extends StatelessWidget {
@@ -64,10 +65,10 @@ class SettingsPage extends StatelessWidget {
                 () => _navigateToNetwork(context),
               ),
               _buildSettingsTile(
-                'Configuração Tasmota',
-                'Configurar dispositivos IoT',
-                Icons.router,
-                () => _navigateToTasmota(context),
+                'Configuração do Relé',
+                'Configurar relé IoT (Tasmota)',
+                Icons.electric_bolt,
+                () => _navigateToRelay(context),
               ),
               _buildSettingsTile(
                 'Backup e Sincronização',
@@ -208,9 +209,11 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  void _navigateToTasmota(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Configuração Tasmota em desenvolvimento')),
+  void _navigateToRelay(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => RelaySettingsPage(),
+      ),
     );
   }
 

@@ -79,19 +79,35 @@ class VulcanizacaoRemoteDataSourceImpl implements VulcanizacaoRemoteDataSource {
       if (e.response != null) {
         final statusCode = e.response!.statusCode;
         final responseData = e.response!.data;
-        
+        // Preferir a mensagem exata da API quando disponível (campo 'error' ou 'message')
+        String serverMsg;
+        try {
+          if (responseData is Map<String, dynamic>) {
+            serverMsg = (responseData['error'] as String?)
+                ?? (responseData['message'] as String?)
+                ?? (e.message ?? 'Erro desconhecido');
+          } else {
+            serverMsg = e.message ?? 'Erro desconhecido';
+          }
+        } catch (_) {
+          serverMsg = e.message ?? 'Erro desconhecido';
+        }
+
         switch (statusCode) {
           case 400:
             throw ServerException(
-              message: 'Dados inválidos para criação do pneu vulcanizado: ${responseData?['message'] ?? 'Erro desconhecido'}',
+              message: serverMsg,
+              statusCode: statusCode,
             );
           case 404:
             throw ServerException(
-              message: 'Usuário ou produção não encontrados: ${responseData?['message'] ?? 'Erro desconhecido'}',
+              message: serverMsg,
+              statusCode: statusCode,
             );
           default:
             throw ServerException(
-              message: 'Erro do servidor ao criar pneu vulcanizado: ${responseData?['message'] ?? e.message}',
+              message: serverMsg,
+              statusCode: statusCode,
             );
         }
       } else {
@@ -266,6 +282,7 @@ class VulcanizacaoRemoteDataSourceImpl implements VulcanizacaoRemoteDataSource {
   Future<List<PneuVulcanizadoResponseDTO>> listarPneusVulcanizados({
     int? usuarioId,
     String? status,
+    String? numeroEtiqueta,
     int page = 0,
     int size = 20,
   }) async {
@@ -286,6 +303,11 @@ class VulcanizacaoRemoteDataSourceImpl implements VulcanizacaoRemoteDataSource {
 
       if (status != null) {
         queryParameters['status'] = status;
+      }
+
+      // Pesquisa por número da etiqueta (se suportado pela API)
+      if (numeroEtiqueta != null && numeroEtiqueta.trim().isNotEmpty) {
+        queryParameters['numeroEtiqueta'] = numeroEtiqueta.trim();
       }
 
       final response = await dio.get(

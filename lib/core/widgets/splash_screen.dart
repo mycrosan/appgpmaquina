@@ -87,8 +87,7 @@ class _SplashScreenState extends State<SplashScreen>
                         width: 120,
                         height: 120,
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(20),
+                          shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
                               color: AppColors.shadow.withOpacity(0.3),
@@ -97,10 +96,10 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ],
                         ),
-                        child: Icon(
-                          Icons.precision_manufacturing,
-                          size: 60,
-                          color: AppColors.primary,
+                        child: CircleAvatar(
+                          radius: 60,
+                          backgroundColor: AppColors.surface,
+                          backgroundImage: const AssetImage('assets/images/icone.png'),
                         ),
                       ),
                       const SizedBox(height: 32),
@@ -117,7 +116,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                       // Subtitle
                       Text(
-                        'Sistema de Injeção',
+          'Sistema de Vulcanização',
                         style: AppTextStyles.titleMedium.copyWith(
                           color: AppColors.textOnPrimary.withOpacity(0.8),
                         ),

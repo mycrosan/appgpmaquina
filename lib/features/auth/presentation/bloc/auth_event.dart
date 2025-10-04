@@ -31,3 +31,18 @@ class AuthLoginRequested extends AuthEvent {
 class AuthLogoutRequested extends AuthEvent {
   const AuthLogoutRequested();
 }
+
+/// Evento para realizar login via biometria
+class AuthBiometricLoginRequested extends AuthEvent {
+  const AuthBiometricLoginRequested();
+}
+
+/// Evento para habilitar/desabilitar biometria neste dispositivo
+class AuthSetBiometricEnabled extends AuthEvent {
+  final bool enabled;
+
+  const AuthSetBiometricEnabled(this.enabled);
+
+  @override
+  List<Object?> get props => [enabled];
+}

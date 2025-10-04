@@ -138,14 +138,14 @@ class CustomButton extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: _getIconSize()),
+          Icon(icon, size: _getIconSize(), color: _getForegroundColor()),
           const SizedBox(width: 8),
-          Text(text, style: _getTextStyle()),
+          Text(text, style: _getTextStyle().copyWith(color: _getForegroundColor())),
         ],
       );
     }
 
-    return Text(text, style: _getTextStyle());
+    return Text(text, style: _getTextStyle().copyWith(color: _getForegroundColor()));
   }
 
   double _getHeight() {
@@ -189,6 +189,17 @@ class CustomButton extends StatelessWidget {
         return AppTextStyles.labelLarge;
       case ButtonSize.large:
         return AppTextStyles.titleMedium;
+    }
+  }
+
+  Color _getForegroundColor() {
+    if (textColor != null) return textColor!;
+    switch (variant) {
+      case ButtonVariant.filled:
+        return AppColors.textOnPrimary;
+      case ButtonVariant.outlined:
+      case ButtonVariant.text:
+        return AppColors.primary;
     }
   }
 }

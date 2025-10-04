@@ -6,6 +6,8 @@ import '../../../../core/widgets/custom_button.dart';
 import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../../core/constants/app_constants.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,6 +21,7 @@ class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _biometricEnabled = false;
 
   @override
   void dispose() {
@@ -36,6 +39,11 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     }
+  }
+
+  void _handleBiometricLogin() {
+    AppLogger.ui('Toque em "Entrar com biometria"', name: 'Biometric');
+    context.read<AuthBloc>().add(const AuthBiometricLoginRequested());
   }
 
   @override
@@ -73,31 +81,18 @@ class _LoginPageState extends State<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo
-                  Container(
-                    height: 120,
-                    margin: const EdgeInsets.only(bottom: 48),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(
-                      Icons.precision_manufacturing,
-                      size: 64,
-                      color: Colors.white,
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Center(
+                      child: Image.asset(
+                        'assets/images/gp_logo.png',
+                        height: 120,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
-
-                  // Título
                   Text(
-                    'GP Máquina',
-                    style: AppTextStyles.headlineLarge.copyWith(
-                      color: AppColors.primary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Sistema de Controle de Injeção',
+                    'Sistema de Controle de Vulcanização',
                     style: AppTextStyles.bodyLarge.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -162,7 +157,47 @@ class _LoginPageState extends State<LoginPage> {
                             text: 'Entrar',
                             onPressed: isLoading ? null : _handleLogin,
                             isLoading: isLoading,
+                            size: ButtonSize.large,
+                            width: double.infinity,
+                            backgroundColor: AppColors.primaryDark,
+                            textColor: AppColors.textOnPrimary,
                           ),
+                          // const SizedBox(height: 12),
+                          // CustomButton(
+                          //   text: 'Entrar com biometria',
+                          //   onPressed:
+                          //       isLoading ||
+                          //           AppConstants.biometricsGloballyDisabled
+                          //       ? null
+                          //       : _handleBiometricLogin,
+                          //   isLoading: false,
+                          // ),
+                          // const SizedBox(height: 12),
+                          // SwitchListTile(
+                          //   title: const Text('Habilitar login por biometria'),
+                          //   subtitle: AppConstants.biometricsGloballyDisabled
+                          //       ? const Text(
+                          //           'Biometria desativada temporariamente',
+                          //         )
+                          //       : null,
+                          //   value: _biometricEnabled,
+                          //   onChanged:
+                          //       isLoading ||
+                          //           AppConstants.biometricsGloballyDisabled
+                          //       ? null
+                          //       : (value) {
+                          //           setState(() {
+                          //             _biometricEnabled = value;
+                          //           });
+                          //           AppLogger.ui(
+                          //             'Alterado switch biometria para: $value',
+                          //             name: 'Biometric',
+                          //           );
+                          //           context.read<AuthBloc>().add(
+                          //             AuthSetBiometricEnabled(value),
+                          //           );
+                          //         },
+                          // ),
                         ],
                       );
                     },

@@ -43,9 +43,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       } else {
         print('🚨 [LOGIN] Erro do servidor: ${response.statusCode}');
         print('🚨 [LOGIN] Response body: ${response.body}');
+        final body = response.body.trim();
         throw ServerException(
-          message:
-              'Erro no servidor: ${response.statusCode} - ${response.body}',
+          // Prioriza exibir apenas o body para feedback claro na UI
+          message: body.isNotEmpty
+              ? body
+              : 'Erro no servidor: ${response.statusCode}',
           statusCode: response.statusCode,
         );
       }

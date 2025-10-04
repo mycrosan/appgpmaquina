@@ -28,4 +28,10 @@ abstract class AuthLocalDataSource {
 
   /// Verifica se existem credenciais salvas
   Future<bool> hasUserCredentials();
+
+  /// Define se a autenticação biométrica está habilitada neste dispositivo
+  Future<void> setBiometricEnabled(bool enabled);
+
+  /// Verifica se a autenticação biométrica está habilitada neste dispositivo
+  Future<bool> isBiometricEnabled();
 }

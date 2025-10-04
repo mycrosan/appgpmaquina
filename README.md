@@ -17,3 +17,5 @@ samples, guidance on mobile development, and a full API reference.
 
 teste nao ok 076577
 teste ok 042953
+
+fvm flutter run -d 11836f8

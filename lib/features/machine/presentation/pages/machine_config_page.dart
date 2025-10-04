@@ -39,6 +39,8 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
   RegistroMaquina? selectedMachine;
   // ID do celular será capturado automaticamente
   final String _celularId = "CEL001"; // Valor padrão para envio
+  // Query de busca para seleção de matriz
+  String _matrizSearchQuery = '';
 
   @override
   void initState() {
@@ -52,19 +54,19 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
     _loadData();
     _loadMachines();
   }
-  
+
   void _loadMachines() async {
     developer.log(
       '🔄 Carregando máquinas disponíveis da API',
       name: 'MachineConfigUI',
     );
-    
+
     // Importando o repositório de registro de máquinas
     final registroMaquinaRepository = sl<RegistroMaquinaRepository>();
-    
+
     // Buscando máquinas da API
     final result = await registroMaquinaRepository.getAllMaquinas();
-    
+
     result.fold(
       (failure) {
         developer.log(
@@ -82,7 +84,7 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
       (machines) {
         setState(() {
           availableMachines = machines;
-          
+
           // Se registroMaquinaId foi fornecido, tenta encontrar e selecionar a máquina correspondente
           if (widget.registroMaquinaId != null) {
             try {
@@ -110,7 +112,7 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
     // Exemplo de implementação futura:
     // context.read<MachineConfigBloc>().add(const LoadAvailableMachines());
   }
-  
+
   @override
   void dispose() {
     super.dispose();
@@ -143,7 +145,7 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Configuração da Máquina'),
+        title: const Text('Config. da Máquina'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
         actions: [
@@ -413,7 +415,9 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
                   );
                 } catch (e) {
                   // Se não encontrar a matriz específica, usa a primeira disponível
-                  selectedMatriz = availableMatrizes.isNotEmpty ? availableMatrizes.first : null;
+                  selectedMatriz = availableMatrizes.isNotEmpty
+                      ? availableMatrizes.first
+                      : null;
                 }
                 developer.log(
                   '🎯 Matriz selecionada automaticamente: ${selectedMatriz?.nome}',
@@ -468,7 +472,7 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
-                    'Config. da Máquina', 
+                    'Config. da Máquina',
                     style: AppTextStyles.headlineSmall,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -476,18 +480,19 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Seleção de Máquina
-            const Text('Selecione a Máquina:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Selecione a Máquina:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             if (availableMachines.isEmpty) ...[
               const Row(
                 children: [
                   Icon(Icons.warning_outlined, color: AppColors.warning),
                   SizedBox(width: 8),
-                  Flexible(
-                    child: Text('Nenhuma máquina disponível'),
-                  ),
+                  Flexible(child: Text('Nenhuma máquina disponível')),
                 ],
               ),
             ] else ...[
@@ -530,68 +535,47 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
                 },
               ),
             ],
-            
+
             const SizedBox(height: 24),
-            
+
             // Seleção de Matriz
-            const Text('Selecione a Matriz:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Selecione a Matriz:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             if (availableMatrizes.isEmpty) ...[
               const Row(
                 children: [
                   Icon(Icons.warning_outlined, color: AppColors.warning),
                   SizedBox(width: 8),
-                  Flexible(
-                    child: Text('Nenhuma matriz disponível'),
-                  ),
+                  Flexible(child: Text('Nenhuma matriz disponível')),
                 ],
               ),
             ] else ...[
-              DropdownButtonFormField<Matriz>(
-                value: selectedMatriz,
-                decoration: const InputDecoration(
-                  labelText: 'Matriz',
-                  border: OutlineInputBorder(),
-                ),
-                isExpanded: true,
-                items: availableMatrizes.map((matriz) {
-                  return DropdownMenuItem<Matriz>(
-                    value: matriz,
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: Text(
-                        '${matriz.nome} (${matriz.codigo})',
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
+              InkWell(
+                onTap: _openMatrizSearch,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Matriz',
+                    border: OutlineInputBorder(),
+                    suffixIcon: Icon(Icons.search),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      selectedMatriz == null
+                          ? 'Toque para pesquisar'
+                          : '${selectedMatriz!.nome}',
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: selectedMatriz == null
+                            ? AppColors.textSecondary
+                            : AppColors.textPrimary,
                       ),
                     ),
-                  );
-                }).toList(),
-                onChanged: (Matriz? value) {
-                  if (value != null) {
-                    developer.log(
-                      '🎯 Usuário selecionou matriz: ${value.nome} (ID: ${value.id})',
-                      name: 'MachineConfigUI',
-                    );
-                    developer.log(
-                      '  - Código: ${value.codigo}',
-                      name: 'MachineConfigUI',
-                    );
-                    developer.log(
-                      '  - Descrição: ${value.descricao}',
-                      name: 'MachineConfigUI',
-                    );
-                  } else {
-                    developer.log(
-                      '❌ Usuário desmarcou seleção de matriz',
-                      name: 'MachineConfigUI',
-                    );
-                  }
-
-                  setState(() {
-                    selectedMatriz = value;
-                  });
-                },
+                  ),
+                ),
               ),
               if (selectedMatriz != null) ...[
                 const SizedBox(height: 16),
@@ -601,6 +585,116 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
           ],
         ),
       ),
+    );
+  }
+
+  void _openMatrizSearch() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        String query = _matrizSearchQuery;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final List<Matriz> filtered = availableMatrizes.where((m) {
+              final q = query.trim().toLowerCase();
+              if (q.isEmpty) return true;
+              return m.nome.toLowerCase().contains(q) ||
+                  m.codigo.toLowerCase().contains(q);
+            }).toList();
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.view_module, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Selecionar Matriz',
+                          style: AppTextStyles.titleMedium.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Pesquisar matriz',
+                        hintText: 'Digite nome ou código',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onChanged: (value) {
+                        setModalState(() {
+                          query = value;
+                          _matrizSearchQuery = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    if (filtered.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Text(
+                          'Nenhuma matriz encontrada',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final m = filtered[index];
+                            final selected = selectedMatriz?.id == m.id;
+                            return ListTile(
+                              title: Text(m.nome),
+                              trailing: selected
+                                  ? const Icon(
+                                      Icons.check,
+                                      color: AppColors.primary,
+                                    )
+                                  : null,
+                              onTap: () {
+                                Navigator.of(context).pop();
+                                setState(() {
+                                  selectedMatriz = m;
+                                  _matrizSearchQuery = '';
+                                });
+                                developer.log(
+                                  '📋 Matriz selecionada: ${m.nome} (ID: ${m.id})',
+                                  name: 'MachineConfigUI',
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -617,44 +711,44 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
               foregroundColor: AppColors.textOnPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-          onPressed: (selectedMatriz == null || selectedMachine == null)
-              ? null
-              : () {
-                  developer.log(
-                    '💾 Usuário clicou em salvar configuração',
-                    name: 'MachineConfigUI',
-                  );
-                  developer.log(
-                    '  - Máquina selecionada: ${selectedMachine!.nome}',
-                    name: 'MachineConfigUI',
-                  );
-                  developer.log(
-                    '  - ID da Máquina: ${selectedMachine!.id}',
-                    name: 'MachineConfigUI',
-                  );
-                  developer.log(
-                    '  - Matriz selecionada: ${selectedMatriz!.nome}',
-                    name: 'MachineConfigUI',
-                  );
-                  developer.log(
-                    '  - ID da Matriz: ${selectedMatriz!.id}',
-                    name: 'MachineConfigUI',
-                  );
-                  developer.log(
-                    '  - Device ID: ${widget.deviceId}',
-                    name: 'MachineConfigUI',
-                  );
-                  developer.log(
-                    '  - User ID: ${widget.userId}',
-                    name: 'MachineConfigUI',
-                  );
-                  developer.log(
-                    '  - ID do Celular (capturado automaticamente): ${_celularId}',
-                    name: 'MachineConfigUI',
-                  );
+            onPressed: (selectedMatriz == null || selectedMachine == null)
+                ? null
+                : () {
+                    developer.log(
+                      '💾 Usuário clicou em salvar configuração',
+                      name: 'MachineConfigUI',
+                    );
+                    developer.log(
+                      '  - Máquina selecionada: ${selectedMachine!.nome}',
+                      name: 'MachineConfigUI',
+                    );
+                    developer.log(
+                      '  - ID da Máquina: ${selectedMachine!.id}',
+                      name: 'MachineConfigUI',
+                    );
+                    developer.log(
+                      '  - Matriz selecionada: ${selectedMatriz!.nome}',
+                      name: 'MachineConfigUI',
+                    );
+                    developer.log(
+                      '  - ID da Matriz: ${selectedMatriz!.id}',
+                      name: 'MachineConfigUI',
+                    );
+                    developer.log(
+                      '  - Device ID: ${widget.deviceId}',
+                      name: 'MachineConfigUI',
+                    );
+                    developer.log(
+                      '  - User ID: ${widget.userId}',
+                      name: 'MachineConfigUI',
+                    );
+                    developer.log(
+                      '  - ID do Celular (capturado automaticamente): ${_celularId}',
+                      name: 'MachineConfigUI',
+                    );
 
-                  _saveConfiguration();
-                },
+                    _saveConfiguration();
+                  },
           ),
         ),
       ],
@@ -675,7 +769,7 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
       );
       return;
     }
-    
+
     if (selectedMachine == null) {
       developer.log(
         '⚠️ Tentativa de salvar sem máquina selecionada',
@@ -704,7 +798,10 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
     );
     developer.log('  - Device ID: ${widget.deviceId}', name: 'MachineConfigUI');
     developer.log('  - User ID: ${widget.userId}', name: 'MachineConfigUI');
-    developer.log('  - ID do Celular (capturado automaticamente): ${_celularId}', name: 'MachineConfigUI');
+    developer.log(
+      '  - ID do Celular (capturado automaticamente): ${_celularId}',
+      name: 'MachineConfigUI',
+    );
 
     context.read<MachineConfigBloc>().add(
       SelectMatrizForMachine(
@@ -792,13 +889,6 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
             ),
             const SizedBox(height: 16),
             if (currentConfig != null) ...[
-              // ID da Configuração
-              if (currentConfig!.id != null) ...[
-                _buildInfoRow(
-                  'ID da Configuração:',
-                  currentConfig!.id.toString(),
-                ),
-              ],
               _buildInfoRow('Dispositivo:', widget.deviceId),
               BlocBuilder<AuthBloc, AuthState>(
                 builder: (context, authState) {
@@ -811,21 +901,16 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
               ),
               // Nome da Máquina (prioriza selectedMachine, mas também tenta buscar por registroMaquinaId)
               if (selectedMachine != null) ...[
-                _buildInfoRow(
-                  'Nome da Máquina:',
-                  selectedMachine!.nome,
-                ),
-              ] else if (widget.registroMaquinaId != null && availableMachines.isNotEmpty) ...[
+                _buildInfoRow('Máquina:', selectedMachine!.nome),
+              ] else if (widget.registroMaquinaId != null &&
+                  availableMachines.isNotEmpty) ...[
                 Builder(
                   builder: (context) {
                     try {
                       final machine = availableMachines.firstWhere(
                         (m) => m.id == widget.registroMaquinaId,
                       );
-                      return _buildInfoRow(
-                        'Nome da Máquina:',
-                        machine.nome,
-                      );
+                      return _buildInfoRow('Nome da Máquina:', machine.nome);
                     } catch (e) {
                       return _buildInfoRow(
                         'ID da Máquina:',
@@ -836,12 +921,13 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
                 ),
               ],
               _buildInfoRow(
-                'Matriz Configurada:',
-                selectedMatriz?.descricao ?? currentConfig!.matrizId.toString(),
+                'Matriz:',
+                selectedMatriz?.nome ??
+                    _getMatrizNameById(currentConfig!.matrizId),
               ),
               _buildInfoRow(
-                'Data de Configuração:',
-                currentConfig!.configuredAt.toString().split(' ')[0],
+                'Data:',
+                _formatBrazilianDate(currentConfig!.configuredAt),
               ),
             ] else ...[
               const Row(
@@ -878,7 +964,7 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
           Flexible(
             flex: 3,
             child: Text(
-              value, 
+              value,
               style: AppTextStyles.bodyMedium,
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
@@ -887,6 +973,29 @@ class _MachineConfigPageState extends State<MachineConfigPage> {
         ],
       ),
     );
+  }
+
+  String _getMatrizNameById(dynamic matrizId) {
+    if (matrizId == null) return '-';
+    try {
+      final m = availableMatrizes.firstWhere((m) => m.id == matrizId);
+      return m.nome;
+    } catch (_) {
+      return matrizId.toString();
+    }
+  }
+
+  String _formatBrazilianDate(dynamic configuredAt) {
+    DateTime d;
+    if (configuredAt is DateTime) {
+      d = configuredAt;
+    } else if (configuredAt is String) {
+      d = DateTime.tryParse(configuredAt) ?? DateTime.now();
+    } else {
+      return configuredAt.toString();
+    }
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(d.day)}/${two(d.month)}/${d.year} ${two(d.hour)}:${two(d.minute)}';
   }
 
   Widget _buildMatrizDetails(Matriz matriz) {

@@ -49,4 +49,16 @@ abstract class AuthRepository {
 
   /// Tenta fazer login automático com credenciais salvas
   Future<Either<Failure, AuthToken?>> tryAutoLogin();
+
+  /// Verifica se a autenticação biométrica está disponível no dispositivo
+  Future<Either<Failure, bool>> isBiometricAvailable();
+
+  /// Verifica se a autenticação biométrica está habilitada pelo usuário
+  Future<Either<Failure, bool>> isBiometricEnabled();
+
+  /// Define se a autenticação biométrica está habilitada pelo usuário
+  Future<Either<Failure, void>> setBiometricEnabled(bool enabled);
+
+  /// Realiza login utilizando autenticação biométrica
+  Future<Either<Failure, User>> loginWithBiometrics();
 }

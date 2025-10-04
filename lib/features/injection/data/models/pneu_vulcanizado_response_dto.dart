@@ -34,6 +34,9 @@ class PneuVulcanizadoResponseDTO extends Equatable {
   
   /// Nome do usuário responsável
   final String usuarioNome;
+
+  /// Número da etiqueta (se disponível)
+  final String? numeroEtiqueta;
   
   /// ID da produção relacionada
   final int producaoId;
@@ -54,6 +57,7 @@ class PneuVulcanizadoResponseDTO extends Equatable {
     required this.producaoId,
     required this.status,
     required this.dtCreate,
+    this.numeroEtiqueta,
     this.dtUpdate,
   });
 
@@ -64,6 +68,7 @@ class PneuVulcanizadoResponseDTO extends Equatable {
       'usuarioId': usuarioId,
       'usuarioNome': usuarioNome,
       'producaoId': producaoId,
+      'numeroEtiqueta': numeroEtiqueta,
       'status': status.value,
       'dtCreate': dtCreate.toIso8601String(),
       'dtUpdate': dtUpdate?.toIso8601String(),
@@ -78,6 +83,7 @@ class PneuVulcanizadoResponseDTO extends Equatable {
       usuarioId: json['usuarioId'] as int,
       usuarioNome: json['usuarioNome'] as String,
       producaoId: json['producaoId'] as int,
+      numeroEtiqueta: json['numeroEtiqueta'] as String?,
       status: StatusPneuVulcanizado.fromString(json['status'] as String),
       dtCreate: DateTime.parse(json['dtCreate'] as String),
       dtUpdate: dtUpdateRaw == null ? null : DateTime.parse(dtUpdateRaw as String),
@@ -90,6 +96,7 @@ class PneuVulcanizadoResponseDTO extends Equatable {
     int? usuarioId,
     String? usuarioNome,
     int? producaoId,
+    String? numeroEtiqueta,
     StatusPneuVulcanizado? status,
     DateTime? dtCreate,
     DateTime? dtUpdate,
@@ -99,6 +106,7 @@ class PneuVulcanizadoResponseDTO extends Equatable {
       usuarioId: usuarioId ?? this.usuarioId,
       usuarioNome: usuarioNome ?? this.usuarioNome,
       producaoId: producaoId ?? this.producaoId,
+      numeroEtiqueta: numeroEtiqueta ?? this.numeroEtiqueta,
       status: status ?? this.status,
       dtCreate: dtCreate ?? this.dtCreate,
       dtUpdate: dtUpdate ?? this.dtUpdate,
@@ -125,6 +133,7 @@ class PneuVulcanizadoResponseDTO extends Equatable {
         usuarioId,
         usuarioNome,
         producaoId,
+        numeroEtiqueta,
         status,
         dtCreate,
         dtUpdate,
@@ -132,6 +141,6 @@ class PneuVulcanizadoResponseDTO extends Equatable {
 
   @override
   String toString() {
-    return 'PneuVulcanizadoResponseDTO(id: $id, usuarioId: $usuarioId, usuarioNome: $usuarioNome, producaoId: $producaoId, status: ${status.value}, dtCreate: $dtCreate, dtUpdate: $dtUpdate)';
+    return 'PneuVulcanizadoResponseDTO(id: $id, usuarioId: $usuarioId, usuarioNome: $usuarioNome, producaoId: $producaoId, numeroEtiqueta: $numeroEtiqueta, status: ${status.value}, dtCreate: $dtCreate, dtUpdate: $dtUpdate)';
   }
 }

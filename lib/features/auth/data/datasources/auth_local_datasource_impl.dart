@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../models/auth_token_model.dart';
 import 'auth_local_datasource.dart';
 
@@ -137,6 +138,30 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
       return sharedPreferences.containsKey(_userCredentialsKey);
     } catch (e) {
       throw CacheException(message: 'Erro ao verificar credenciais: $e');
+    }
+  }
+
+  @override
+  Future<void> setBiometricEnabled(bool enabled) async {
+    try {
+      final success = await sharedPreferences.setBool(
+        AppConstants.keyBiometricEnabled,
+        enabled,
+      );
+      if (!success) {
+        throw CacheException(message: 'Falha ao salvar flag de biometria');
+      }
+    } catch (e) {
+      throw CacheException(message: 'Erro ao salvar flag de biometria: $e');
+    }
+  }
+
+  @override
+  Future<bool> isBiometricEnabled() async {
+    try {
+      return sharedPreferences.getBool(AppConstants.keyBiometricEnabled) ?? false;
+    } catch (e) {
+      throw CacheException(message: 'Erro ao recuperar flag de biometria: $e');
     }
   }
 }

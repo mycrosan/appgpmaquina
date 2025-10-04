@@ -32,6 +32,7 @@ abstract class VulcanizacaoRemoteDataSource {
   /// 
   /// [usuarioId] - ID do usuário para filtrar (opcional)
   /// [status] - Status para filtrar (opcional)
+  /// [numeroEtiqueta] - Pesquisa por número da etiqueta (opcional)
   /// [page] - Página para paginação (padrão: 0)
   /// [size] - Tamanho da página (padrão: 20)
   /// Retorna lista de [PneuVulcanizadoResponseDTO]
@@ -39,6 +40,7 @@ abstract class VulcanizacaoRemoteDataSource {
   Future<List<PneuVulcanizadoResponseDTO>> listarPneusVulcanizados({
     int? usuarioId,
     String? status,
+    String? numeroEtiqueta,
     int page = 0,
     int size = 20,
   });

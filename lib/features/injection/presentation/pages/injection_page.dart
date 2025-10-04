@@ -11,7 +11,7 @@ class InjectionPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Injeção'),
+        title: const Text('Vulcanização'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
       ),
@@ -35,13 +35,13 @@ class InjectionPage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Sistema de Injeção de Ar',
+              'Sistema de Vulcanização',
               style: AppTextStyles.headlineMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             const Text(
-              'Controle automatizado para injeção de ar em carcaças',
+                'Controle automatizado de vulcanização de pneus',
               style: AppTextStyles.bodyLarge,
               textAlign: TextAlign.center,
             ),
@@ -49,7 +49,7 @@ class InjectionPage extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: CustomButton(
-                text: 'Iniciar Processo',
+                text: 'Iniciar Vulcanização',
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -65,14 +65,9 @@ class InjectionPage extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: CustomButton(
-                text: 'Histórico',
+                text: 'Histórico de Vulcanização',
                 onPressed: () {
-                  // TODO: Implementar navegação para histórico
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Histórico em desenvolvimento'),
-                    ),
-                  );
+                  Navigator.of(context).pushNamed('/history');
                 },
                 variant: ButtonVariant.outlined,
                 size: ButtonSize.large,

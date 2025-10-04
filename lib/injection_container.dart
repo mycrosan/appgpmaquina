@@ -8,6 +8,7 @@ import 'core/services/device_info_service.dart';
 // Features - Auth
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/domain/usecases/login.dart';
+import 'features/auth/domain/usecases/login_with_biometrics.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/data/datasources/auth_remote_datasource.dart';
@@ -67,10 +68,15 @@ final sl = GetIt.instance;
 Future<void> init() async {
   //! Features - Auth
   // Bloc
-  sl.registerFactory(() => AuthBloc(authRepository: sl(), loginUseCase: sl()));
+  sl.registerFactory(() => AuthBloc(
+        authRepository: sl(),
+        loginUseCase: sl(),
+        loginWithBiometricsUseCase: sl(),
+      ));
 
   // Use cases
   sl.registerLazySingleton(() => Login(sl()));
+  sl.registerLazySingleton(() => LoginWithBiometrics(sl()));
   sl.registerLazySingleton(() => GetCurrentUser(sl()));
 
   // Repository
@@ -196,12 +202,14 @@ Future<void> init() async {
       baseUrl: AppConfig.instance.apiBaseUrl,
     ),
   );
-  sl.registerLazySingleton<SonoffDataSource>(
-    () => SonoffDataSourceImpl(
+  sl.registerLazySingleton<SonoffDataSource>(() {
+    // Não utilizamos mais SharedPreferences para IP do relé.
+    // Usa baseURL padrão do ambiente (pode ser ajustado em runtime quando necessário).
+    return SonoffDataSourceImpl(
       client: sl(),
-      baseUrl: 'http://192.168.0.165', // IP e porta do Sonoff
-    ),
-  );
+      baseUrl: AppConfig.instance.tasmotaBaseUrl,
+    );
+  });
   sl.registerLazySingleton<VulcanizacaoRemoteDataSource>(
     () => VulcanizacaoRemoteDataSourceImpl(dio: sl()),
   );

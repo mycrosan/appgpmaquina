@@ -42,6 +42,13 @@ class AppConstants {
       'Use sua impressão digital ou Face ID';
   static const String biometricNegativeButton = 'Cancelar';
 
+  // Flag global para desativar biometria temporariamente
+  static const bool biometricsGloballyDisabled = true;
+
+  // Mensagem para biometria desativada temporariamente
+  static const String biometricTemporarilyDisabledMessage =
+      'Autenticação biométrica está desativada temporariamente.';
+
   // Mensagens de erro padrão
   static const String networkErrorMessage =
       'Erro de conexão. Verifique sua internet.';

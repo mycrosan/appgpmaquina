@@ -184,8 +184,8 @@ class _HomePageState extends State<HomePage> {
                 _buildQuickActionsSection(),
                 const SizedBox(height: 24),
 
-                // Estatísticas recentes
-                _buildRecentStatsSection(),
+                // Estatísticas recentes ocultadas
+                // _buildRecentStatsSection(),
               ],
             ),
           ),
@@ -220,7 +220,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 Text(
-                  'Sistema de Controle de Injeção',
+                  'Sistema de Controle de Vulcanização',
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.textOnPrimary.withOpacity(0.9),
                   ),
@@ -305,7 +305,7 @@ class _HomePageState extends State<HomePage> {
               onTap: _navigateToMachines,
             ),
             DashboardCard(
-              title: 'Injeção',
+              title: 'Vulcanização',
               subtitle: 'Controlar processos',
               icon: Icons.play_circle_filled,
               color: AppColors.success,

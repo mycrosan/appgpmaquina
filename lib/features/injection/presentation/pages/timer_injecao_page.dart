@@ -172,7 +172,7 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Injeção de Ar'),
+      title: const Text('Vulcanização'),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
         elevation: 0,
@@ -187,8 +187,8 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
               SnackBar(
                 content: Text(
                   state.sucesso 
-                      ? '🎉 Pneu pronto! Injeção finalizada com sucesso!'
-                      : 'Injeção finalizada com falha',
+      ? '🎉 Pneu pronto! Vulcanização finalizada com sucesso!'
+      : 'Vulcanização finalizada com falha',
                 ),
                 backgroundColor: state.sucesso ? AppColors.success : AppColors.error,
                 behavior: SnackBarBehavior.floating,
@@ -199,7 +199,7 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
             Navigator.of(context).popUntil((route) => route.isFirst);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Injeção cancelada'),
+        content: Text('Vulcanização cancelada'),
                 backgroundColor: AppColors.warning,
                 behavior: SnackBarBehavior.floating,
               ),
@@ -331,7 +331,7 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
                     Text(
                       _isFinished 
                           ? '🎉 Pneu Pronto!' 
-                          : (_isRunning ? 'Injeção em andamento...' : 'Injeção pausada'),
+        : (_isRunning ? 'Vulcanização em andamento...' : 'Vulcanização pausada'),
                       style: AppTextStyles.titleMedium.copyWith(
                         color: _getTimerColor(),
                         fontWeight: FontWeight.w600,
@@ -383,9 +383,9 @@ class _TimerInjecaoPageState extends State<TimerInjecaoPage>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cancelar Injeção'),
+      title: const Text('Cancelar Vulcanização'),
         content: const Text(
-          'Tem certeza que deseja cancelar a injeção de ar? '
+      'Tem certeza que deseja cancelar a vulcanização? '
           'Esta ação não pode ser desfeita.',
         ),
         actions: [

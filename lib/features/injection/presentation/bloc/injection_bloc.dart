@@ -8,6 +8,7 @@ import '../../domain/usecases/controlar_sonoff_usecase.dart';
 import '../../../machine/domain/usecases/get_current_machine_config.dart';
 import '../../../../core/services/device_info_service.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../data/datasources/vulcanizacao_remote_datasource.dart';
 import '../../data/models/pneu_vulcanizado_create_dto.dart';
 import '../../data/models/pneu_vulcanizado_response_dto.dart';
@@ -199,14 +200,33 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
           final apiMsg = apiError.toString();
           // Validação: não permitir iniciar nova injeção se já existir um pneu vulcanizado para usuário+produção
           if (apiMsg.contains('Já existe um pneu vulcanizado')) {
-            print('❌ [INJECTION] Validação: já existe pneu vulcanizado para este usuário e produção. Abortando início da injeção.');
-            emit(const InjectionError(
-              message: 'Já existe um pneu vulcanizado para este usuário e produção. Finalize o processo existente antes de iniciar outro.',
+            final displayMsg = (apiError is ServerException && apiError.message.isNotEmpty)
+                ? apiError.message
+                : 'Já existe um pneu vulcanizado para este usuário e produção.';
+            print('❌ [INJECTION] Validação: já existe pneu vulcanizado para este usuário e produção. Abortando início da injeção. Mensagem: $displayMsg');
+            emit(InjectionError(
+              message: displayMsg,
             ));
             return;
           }
-          // Outros erros: permitir continuar (sem registro na API)
-          print('⚠️ [INJECTION] Continuando processo sem registro na API...');
+          // Status 500: tratar como erro bloqueante e exibir mensagem
+          if (apiError is ServerException && (apiError.statusCode == 500)) {
+            print('❌ [INJECTION] Erro 500 recebido. Abortando início da injeção.');
+            emit(InjectionError(
+              message: apiError.message,
+            ));
+            return;
+          }
+          if (apiMsg.contains('Status: 500') || apiMsg.contains('INTERNAL_SERVER_ERROR') || apiMsg.contains('Erro interno')) {
+            print('❌ [INJECTION] Erro de servidor (500) detectado via mensagem. Abortando início da injeção.');
+            emit(const InjectionError(
+              message: 'Erro no servidor ao criar registro. Processo interrompido.',
+            ));
+            return;
+          }
+          // Demais erros: interromper e exibir mensagem genérica
+          emit(InjectionError(message: 'Erro ao criar registro na API: $apiMsg'));
+          return;
         }
       } else {
         print('⚠️ [INJECTION] AVISO: VulcanizacaoDataSource ou GetCurrentUser não disponível');
