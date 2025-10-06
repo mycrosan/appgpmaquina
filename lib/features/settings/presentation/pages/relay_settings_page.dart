@@ -39,6 +39,8 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
   String? _celularId;
   bool _loading = false;
   String? _statusMessage;
+  int? _activeMatrizId;
+  String? _activeMatrizName;
 
 
   @override
@@ -54,10 +56,41 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
     setState(() {
       _celularId = id;
     });
+    await _loadActiveMachineConfig();
   }
 
   Future<void> _loadSettings() async {
     // Não carregamos mais configurações locais; a tela inicia vazia
+  }
+
+  Future<void> _loadActiveMachineConfig() async {
+    try {
+      final getUser = sl<GetCurrentUser>();
+      final userResult = await getUser();
+      final userId = userResult.fold<String?>(
+        (_) => null,
+        (user) => user.id.toString(),
+      );
+      final deviceId = (_celularId ?? '').trim();
+      if (userId == null || deviceId.isEmpty) return;
+
+      final getConfig = sl<GetCurrentMachineConfig>();
+      final cfgResult = await getConfig(
+        GetMachineConfigParams(deviceId: deviceId, userId: userId),
+      );
+
+      cfgResult.fold(
+        (_) {},
+        (config) {
+          setState(() {
+            _activeMatrizId = config?.matrizId;
+            _activeMatrizName = config?.matriz?.nome;
+          });
+        },
+      );
+    } catch (_) {
+      // Falha silenciosa; UI mostra estado padrão
+    }
   }
 
   Future<void> _loadMachines() async {
@@ -250,6 +283,54 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
               key: _formKey,
               child: Column(
                 children: [
+                  // Informações do dispositivo e matriz ativa
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.phone_iphone, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Celular ID: ${_celularId ?? 'carregando...'}',
+                                style: AppTextStyles.bodyMedium,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(Icons.account_tree, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Matriz ativa: ${_activeMatrizName ?? (_activeMatrizId != null ? _activeMatrizId.toString() : '-')}',
+                                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'As configurações são sincronizadas no servidor conforme a documentação (Swagger).',
+                          style: AppTextStyles.caption,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   TextFormField(
                     controller: _ipController,
                     decoration: const InputDecoration(
@@ -260,22 +341,11 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
                     validator: (value) {
                       final v = value?.trim() ?? '';
                       if (v.isEmpty) return 'Informe o IP do relé';
+                      // Validação simples: IPv4 com 4 grupos
+                      final parts = v.split(':').first.split('.');
+                      if (parts.length != 4) return 'IP inválido, use formato 0.0.0.0';
                       return null;
                     },
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.phone_iphone, color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'Celular ID: ${_celularId ?? 'carregando...'}',
-                          style: AppTextStyles.bodyMedium,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
                   ),
                   const SizedBox(height: 12),
                   // Seletor de Máquina
@@ -304,6 +374,10 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
                         _selectedMachine = value;
                       });
                     },
+                    validator: (value) {
+                      if (value == null) return 'Selecione uma máquina';
+                      return null;
+                    },
                   ),
                 ],
               ),
@@ -317,7 +391,7 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
                   width: 240,
                   child: CustomButton(
                     text: 'Salvar Configuração',
-                    onPressed: _saveSettings,
+                    onPressed: _loading ? null : _saveSettings,
                     variant: ButtonVariant.filled,
                   ),
                 ),
