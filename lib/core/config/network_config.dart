@@ -159,6 +159,9 @@ class ApiEndpoints {
   ) =>
       '/configuracao-maquina/maquina/$registroMaquinaId/chave/$chaveConfiguracao';
 
+  // Relay endpoints
+  static String get rele => '/rele';
+
   // Registro Maquina endpoints
   static String get registroMaquina => '/registro-maquina';
   static String registroMaquinaById(int id) => '/registro-maquina/$id';

@@ -20,9 +20,29 @@ import '../../../machine/domain/usecases/create_configuracao_maquina.dart';
 import '../../../machine/domain/usecases/get_configuracao_by_maquina_and_chave.dart';
 import '../../../machine/domain/usecases/update_configuracao_maquina.dart';
 import '../../../auth/domain/usecases/get_current_user.dart';
-import '../../../machine/domain/usecases/get_current_machine_config.dart';
 import '../../../../core/config/network_config.dart';
 import '../../../machine/data/models/configuracao_maquina_dto.dart';
+
+class _RelayItem {
+  final TextEditingController ipController;
+  RegistroMaquina? machine;
+  _RelayItem({String ip = '', this.machine})
+      : ipController = TextEditingController(text: ip);
+}
+class _RegisteredRelay {
+  final int id;
+  final String ip;
+  final int maquinaId;
+  final int? matrizId;
+  final String? celularId;
+  _RegisteredRelay({
+    required this.id,
+    required this.ip,
+    required this.maquinaId,
+    this.matrizId,
+    this.celularId,
+  });
+}
 
 class RelaySettingsPage extends StatefulWidget {
   const RelaySettingsPage({super.key});
@@ -33,15 +53,15 @@ class RelaySettingsPage extends StatefulWidget {
 
 class _RelaySettingsPageState extends State<RelaySettingsPage> {
   final _formKey = GlobalKey<FormState>();
-  final _ipController = TextEditingController();
   List<RegistroMaquina> _machines = [];
-  RegistroMaquina? _selectedMachine;
+  List<_RelayItem> _relayItems = [];
+  List<_RegisteredRelay> _registeredRelays = [];
+  bool _loadingRegisteredRelays = false;
+  // Status por IP: true (ligado), false (desligado), null (desconhecido)
+  final Map<String, bool?> _relayStatus = {};
   String? _celularId;
   bool _loading = false;
   String? _statusMessage;
-  int? _activeMatrizId;
-  String? _activeMatrizName;
-
 
   @override
   void initState() {
@@ -49,6 +69,7 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
     _initDeviceId();
     _loadSettings();
     _loadMachines();
+    _relayItems.add(_RelayItem());
   }
 
   Future<void> _initDeviceId() async {
@@ -56,47 +77,280 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
     setState(() {
       _celularId = id;
     });
-    await _loadActiveMachineConfig();
+    _loadRegisteredRelays();
+  }
+
+  @override
+  void dispose() {
+    for (final item in _relayItems) {
+      item.ipController.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _loadRegisteredRelays() async {
+    final celularId = (_celularId ?? '').trim();
+    if (celularId.isEmpty) return;
+    setState(() => _loadingRegisteredRelays = true);
+    try {
+      final dio = NetworkConfig.dio;
+      Response response;
+      try {
+        response = await dio.get(
+          ApiEndpoints.rele,
+          queryParameters: {
+            'celularId': celularId,
+          },
+        );
+      } catch (e) {
+        return;
+      }
+
+      final data = response.data;
+      List items = [];
+      if (data is List) {
+        items = data;
+      } else if (data is Map && data['content'] is List) {
+        items = data['content'];
+      }
+
+      final parsed = <_RegisteredRelay>[];
+      for (final it in items) {
+        if (it is Map) {
+          final idVal = it['id'];
+          final id = idVal is int ? idVal : int.tryParse(idVal?.toString() ?? '');
+          final ip = (it['ip'] ?? '').toString();
+          final maquinaIdStr = (it['maquinaId'] ?? '').toString();
+          final maquinaId = int.tryParse(maquinaIdStr);
+          final matrizIdStr = it['matrizId']?.toString();
+          final matrizId = matrizIdStr != null ? int.tryParse(matrizIdStr) : null;
+          final celId = it['celularId']?.toString();
+          if (id != null && ip.isNotEmpty && maquinaId != null) {
+            parsed.add(
+              _RegisteredRelay(
+                id: id,
+                ip: ip,
+                maquinaId: maquinaId,
+                matrizId: matrizId,
+                celularId: celId,
+              ),
+            );
+          }
+        }
+      }
+
+      setState(() {
+        _registeredRelays = parsed;
+      });
+      // Após carregar, atualiza o status de cada relé
+      await _updateAllRelayStatuses();
+    } finally {
+      if (mounted) {
+        setState(() => _loadingRegisteredRelays = false);
+      }
+    }
+  }
+
+  Future<void> _updateAllRelayStatuses() async {
+    for (final r in _registeredRelays) {
+      await _checkRelayStatus(r.ip);
+    }
+  }
+
+  Future<void> _checkRelayStatus(String ip) async {
+    try {
+      final ds = _buildDataSourceForIp(ip);
+      final isOn = await ds.verificarStatusRele();
+      if (!mounted) return;
+      setState(() {
+        _relayStatus[ip] = isOn;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _relayStatus[ip] = null;
+      });
+    }
+  }
+
+  Widget _buildStatusChip(String ip) {
+    final st = _relayStatus[ip];
+    String label;
+    Color textColor;
+    Color bgColor;
+    if (st == true) {
+      label = 'Ligado';
+      textColor = AppColors.primary;
+      bgColor = AppColors.primary.withOpacity(0.10);
+    } else if (st == false) {
+      label = 'Desligado';
+      textColor = AppColors.textSecondary;
+      bgColor = AppColors.border.withOpacity(0.20);
+    } else {
+      label = 'Status';
+      textColor = AppColors.textSecondary;
+      bgColor = AppColors.surface;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.bodySmall.copyWith(color: textColor),
+      ),
+    );
+  }
+
+  Future<void> _updateRelayConfig({
+    required int id,
+    required String ip,
+    required int maquinaId,
+  }) async {
+    try {
+      final celularId = (_celularId ?? '').trim();
+      final dio = NetworkConfig.dio;
+      final payload = {
+        'ip': ip,
+        'celularId': celularId,
+        'maquinaId': maquinaId,
+      };
+      final url = '${ApiEndpoints.rele}/$id';
+      final response = await dio.put(url, data: payload);
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Configuração atualizada com sucesso')),
+        );
+        await _loadRegisteredRelays();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Falha ao atualizar: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao atualizar: $e')),
+      );
+    }
+  }
+
+  Future<void> _deleteRelayConfig(_RegisteredRelay r) async {
+    try {
+      final dio = NetworkConfig.dio;
+      final url = '${ApiEndpoints.rele}/${r.id}';
+      final response = await dio.delete(url);
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        setState(() {
+          _registeredRelays.removeWhere((e) => e.id == r.id);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Relé removido com sucesso')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Falha ao remover: ${response.statusCode}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao remover: $e')),
+      );
+    }
+  }
+
+  Future<void> _showEditRelayDialog(_RegisteredRelay r) async {
+    final ipController = TextEditingController(text: r.ip);
+    RegistroMaquina? selectedMachine;
+    try {
+      selectedMachine = _machines.firstWhere((m) => m.id == r.maquinaId);
+    } catch (_) {}
+    final formKey = GlobalKey<FormState>();
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Editar Relé'),
+          content: Form(
+            key: formKey,
+            child: SizedBox(
+              width: 320,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: ipController,
+                    decoration: const InputDecoration(
+                      labelText: 'IP do Relé',
+                      border: OutlineInputBorder(),
+                    ),
+                    inputFormatters: [IpTextInputFormatter()],
+                    validator: (value) {
+                      final v = value?.trim() ?? '';
+                      if (v.isEmpty) return 'Informe o IP';
+                      final parts = v.split(':').first.split('.');
+                      if (parts.length != 4) return 'IP inválido';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<RegistroMaquina>(
+                    value: selectedMachine,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Máquina',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _machines.map((m) {
+                      return DropdownMenuItem<RegistroMaquina>(
+                        value: m,
+                        child: Text(m.nome, overflow: TextOverflow.ellipsis),
+                      );
+                    }).toList(),
+                    onChanged: (value) => selectedMachine = value,
+                    validator: (value) {
+                      if (value == null) return 'Selecione uma máquina';
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final ip = ipController.text.trim();
+                final maquinaId = selectedMachine!.id!;
+                await _updateRelayConfig(id: r.id, ip: ip, maquinaId: maquinaId);
+                if (ctx.mounted) Navigator.of(ctx).pop();
+              },
+              child: const Text('Salvar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _loadSettings() async {
     // Não carregamos mais configurações locais; a tela inicia vazia
   }
 
-  Future<void> _loadActiveMachineConfig() async {
-    try {
-      final getUser = sl<GetCurrentUser>();
-      final userResult = await getUser();
-      final userId = userResult.fold<String?>(
-        (_) => null,
-        (user) => user.id.toString(),
-      );
-      final deviceId = (_celularId ?? '').trim();
-      if (userId == null || deviceId.isEmpty) return;
-
-      final getConfig = sl<GetCurrentMachineConfig>();
-      final cfgResult = await getConfig(
-        GetMachineConfigParams(deviceId: deviceId, userId: userId),
-      );
-
-      cfgResult.fold(
-        (_) {},
-        (config) {
-          setState(() {
-            _activeMatrizId = config?.matrizId;
-            _activeMatrizName = config?.matriz?.nome;
-          });
-        },
-      );
-    } catch (_) {
-      // Falha silenciosa; UI mostra estado padrão
-    }
-  }
-
   Future<void> _loadMachines() async {
     try {
       final usecase = sl<GetAllMaquinas>();
-      final dartz.Either<Failure, List<RegistroMaquina>> result = await usecase(NoParams());
+      final dartz.Either<Failure, List<RegistroMaquina>> result = await usecase(
+        NoParams(),
+      );
       result.fold(
         (failure) {
           // Apenas loga; UI continuará com lista vazia
@@ -114,34 +368,30 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
 
   Future<void> _saveSettings() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedMachine == null || _selectedMachine?.id == null) {
+    if (_relayItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecione uma máquina antes de salvar')),
+        const SnackBar(content: Text('Adicione ao menos um relé')),
       );
       return;
     }
-    // Tenta persistir também na API como configurações da máquina (upsert)
     setState(() => _loading = true);
     final apiMessage = await _persistConfigsToApi();
     setState(() => _loading = false);
 
     final successText = apiMessage?.isNotEmpty == true
-        ? 'Configurações sincronizadas no servidor: $apiMessage'
-        : 'Configurações sincronizadas no servidor (não armazenadas no dispositivo)';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(successText)),
-    );
+        ? 'Configurações sincronizadas: $apiMessage'
+        : 'Configurações sincronizadas (não armazenadas no dispositivo)';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(successText)));
+
+    _loadRegisteredRelays();
   }
 
   Future<String?> _persistConfigsToApi() async {
     try {
-      final registroId = _selectedMachine!.id!;
-      final relayIp = _ipController.text.trim();
       final celularId = (_celularId ?? '').trim();
-
-      if (relayIp.isEmpty || celularId.isEmpty) {
-        return null;
-      }
+      if (celularId.isEmpty) return null;
 
       // 1) Obter usuário atual para compor userId
       final getUser = sl<GetCurrentUser>();
@@ -150,91 +400,82 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
         (_) => null,
         (user) => user.id.toString(),
       );
-
       if (userId == null) {
-        // Sem usuário autenticado, não conseguimos sincronizar
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Usuário não autenticado. Faça login para sincronizar.')),
-        );
-        return null;
-      }
-
-      // 2) Obter configuração atual da máquina para recuperar matrizId ativo
-      final getConfig = sl<GetCurrentMachineConfig>();
-      final cfgResult = await getConfig(
-        GetMachineConfigParams(deviceId: celularId, userId: userId),
-      );
-
-      final matrizId = cfgResult.fold<int?>(
-        (_) => null,
-        (config) => config?.matrizId,
-      );
-
-      if (matrizId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Nenhuma matriz ativa encontrada para este dispositivo. Configure a matriz na tela de Máquina.'),
+            content: Text(
+              'Usuário não autenticado. Faça login para sincronizar.',
+            ),
           ),
         );
         return null;
       }
 
-      // 3) Montar DTO esperado pelo backend e enviar via Dio com headers de auth automáticos
-      final dto = ConfiguracaoMaquinaCreateDTO(
-        maquinaId: registroId,
-        matrizId: matrizId,
-        celularId: celularId,
-        descricao: 'Configuração do relé (IP) para máquina: ${_selectedMachine!.nome}',
-        atributos: jsonEncode({
-          'relay_ip': relayIp,
-          'usuario_configuracao': userId,
-          'data_configuracao': DateTime.now().toIso8601String(),
-        }),
-      );
+      // 2) Itera itens e envia um POST por máquina
+      int successCount = 0;
+      int total = 0;
 
       final dio = NetworkConfig.dio;
-      Response response;
-      try {
-        response = await dio.post(
-          ApiEndpoints.configuracaoMaquina,
-          data: dto.toJson(),
-        );
-      } catch (e) {
-        // Se for DioException, tentar extrair mensagem do servidor
-        if (e is DioException) {
-          final status = e.response?.statusCode;
-          final data = e.response?.data;
-          final msg = 'Falha ao sincronizar (${status ?? 'erro'}): ${data ?? e.message}';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(msg)),
-          );
+      for (final item in _relayItems) {
+        final relayIp = item.ipController.text.trim();
+        final registroId = item.machine?.id;
+        if (relayIp.isEmpty || registroId == null) continue;
+        total++;
+
+        final payload = {
+          'ip': relayIp,
+          'celularId': celularId,
+          'maquinaId': registroId,
+        };
+
+        try {
+          final response = await dio.post(ApiEndpoints.rele, data: payload);
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            successCount++;
+          }
+        } catch (e) {
+          if (e is DioException) {
+            final status = e.response?.statusCode;
+            final data = e.response?.data;
+            final msg =
+                'Falha ao sincronizar (${status ?? 'erro'}): ${data ?? e.message}';
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(msg)));
+          }
         }
-        return null;
       }
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return 'relay_ip';
-      }
-
-      return null;
+      if (total == 0) return null;
+      return '$successCount de $total';
     } catch (_) {
-      // Silencia erros para não bloquear o fluxo; UI continuará sem persistência local
       return null;
     }
   }
 
   SonoffDataSource _buildDataSource() {
-    final ip = _ipController.text.trim();
+    final ip = _relayItems.isNotEmpty
+        ? _relayItems.first.ipController.text.trim()
+        : '';
     final baseUrl = ip.startsWith('http://') || ip.startsWith('https://')
         ? ip
         : 'http://$ip';
-    return SonoffDataSourceImpl(
-      client: http.Client(),
-      baseUrl: baseUrl,
-    );
+    return SonoffDataSourceImpl(client: http.Client(), baseUrl: baseUrl);
   }
 
-  Future<void> _executeAction(Future<bool> Function() action, String success, String fail) async {
+  // Cria uma fonte de dados do relé baseada em um IP específico
+  SonoffDataSource _buildDataSourceForIp(String ip) {
+    final baseUrl = ip.startsWith('http://') || ip.startsWith('https://')
+        ? ip
+        : 'http://$ip';
+    return SonoffDataSourceImpl(client: http.Client(), baseUrl: baseUrl);
+  }
+
+  Future<void> _executeAction(
+    Future<bool> Function() action,
+    String success,
+    String fail,
+  ) async {
     setState(() {
       _loading = true;
       _statusMessage = null;
@@ -244,10 +485,21 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
       setState(() {
         _statusMessage = ok ? success : fail;
       });
+      final msg = ok ? success : fail;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg)),
+        );
+      }
     } catch (e) {
       setState(() {
         _statusMessage = 'Erro: $e';
       });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro: $e')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -266,7 +518,9 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
       appBar: AppBar(
         title: Text(
           'Configuração do Relé',
-          style: AppTextStyles.titleLarge.copyWith(color: AppColors.textOnPrimary),
+          style: AppTextStyles.titleLarge.copyWith(
+            color: AppColors.textOnPrimary,
+          ),
         ),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.textOnPrimary,
@@ -277,13 +531,18 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Conexão', style: AppTextStyles.titleMedium.copyWith(color: AppColors.primary)),
+            Text(
+              'Conexão',
+              style: AppTextStyles.titleMedium.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
             const SizedBox(height: 8),
             Form(
               key: _formKey,
               child: Column(
                 children: [
-                  // Informações do dispositivo e matriz ativa
+                  // Informações do dispositivo
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
@@ -297,87 +556,136 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.phone_iphone, color: AppColors.primary),
+                            const Icon(
+                              Icons.phone_iphone,
+                              color: AppColors.primary,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(
-                                'Celular ID: ${_celularId ?? 'carregando...'}',
-                                style: AppTextStyles.bodyMedium,
-                                overflow: TextOverflow.ellipsis,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Celular',
+                                    style: AppTextStyles.bodyMedium,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    _celularId ?? 'carregando...',
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(Icons.account_tree, color: AppColors.primary),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Matriz ativa: ${_activeMatrizName ?? (_activeMatrizId != null ? _activeMatrizId.toString() : '-')}',
-                                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'As configurações são sincronizadas no servidor conforme a documentação (Swagger).',
-                          style: AppTextStyles.caption,
-                        ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _ipController,
-                    decoration: const InputDecoration(
-                      labelText: 'IP do Relé (ex.: 192.168.0.165)',
-                      border: OutlineInputBorder(),
-                    ),
-                    inputFormatters: [IpTextInputFormatter()],
-                    validator: (value) {
-                      final v = value?.trim() ?? '';
-                      if (v.isEmpty) return 'Informe o IP do relé';
-                      // Validação simples: IPv4 com 4 grupos
-                      final parts = v.split(':').first.split('.');
-                      if (parts.length != 4) return 'IP inválido, use formato 0.0.0.0';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  // Seletor de Máquina
-                  DropdownButtonFormField<RegistroMaquina>(
-                    value: _selectedMachine,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Máquina para este telefone',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _machines.map((m) {
-                      return DropdownMenuItem<RegistroMaquina>(
-                        value: m,
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: Text(
-                            m.nome,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
+                  // Lista dinâmica de relés (IP + máquina)
+                  ...List.generate(_relayItems.length, (index) {
+                    final item = _relayItems[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedMachine = value;
-                      });
-                    },
-                    validator: (value) {
-                      if (value == null) return 'Selecione uma máquina';
-                      return null;
-                    },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: item.ipController,
+                                    decoration: const InputDecoration(
+                                      labelText:
+                                          'IP do Relé (ex.: 192.168.0.165)',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    inputFormatters: [IpTextInputFormatter()],
+                                    validator: (value) {
+                                      final v = value?.trim() ?? '';
+                                      if (v.isEmpty) {
+                                        return 'Informe o IP do relé';
+                                      }
+                                      final parts =
+                                          v.split(':').first.split('.');
+                                      if (parts.length != 4) {
+                                        return 'IP inválido, use formato 0.0.0.0';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                IconButton(
+                                  tooltip: 'Remover relé',
+                                  onPressed: _relayItems.length > 1
+                                      ? () => setState(() {
+                                            _relayItems.removeAt(index);
+                                          })
+                                      : null,
+                                  icon: const Icon(Icons.delete_outline),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            DropdownButtonFormField<RegistroMaquina>(
+                              value: item.machine,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Máquina para este relé',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: _machines.map((m) {
+                                return DropdownMenuItem<RegistroMaquina>(
+                                  value: m,
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: Text(
+                                      m.nome,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  item.machine = value;
+                                });
+                              },
+                              validator: (value) {
+                                if (value == null) return 'Selecione uma máquina';
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _relayItems.add(_RelayItem());
+                        });
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Adicionar relé'),
+                    ),
                   ),
                 ],
               ),
@@ -399,7 +707,12 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
             ),
             const SizedBox(height: 24),
 
-            Text('Ações do Relé', style: AppTextStyles.titleMedium.copyWith(color: AppColors.primary)),
+            Text(
+              'Relés cadastrados',
+              style: AppTextStyles.titleMedium.copyWith(
+                color: AppColors.primary,
+              ),
+            ),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
@@ -409,68 +722,171 @@ class _RelaySettingsPageState extends State<RelaySettingsPage> {
               ),
               padding: const EdgeInsets.all(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      SizedBox(
-                        width: 220,
-                        child: CustomButton(
-                          text: 'Ligar Relé',
-                          onPressed: _loading
-                              ? null
-                              : () => _executeAction(
-                                    ds.ligarRele,
-                                    'Relé ligado com sucesso',
-                                    'Falha ao ligar relé',
-                                  ),
-                          icon: Icons.power,
-                          variant: ButtonVariant.filled,
-                        ),
-                      ),
-                      SizedBox(
-                        width: 220,
-                        child: CustomButton(
-                          text: 'Desligar Relé',
-                          onPressed: _loading
-                              ? null
-                              : () => _executeAction(
-                                    ds.desligarRele,
-                                    'Relé desligado com sucesso',
-                                    'Falha ao desligar relé',
-                                  ),
-                          icon: Icons.power_settings_new,
-                          variant: ButtonVariant.outlined,
-                        ),
-                      ),
-                      SizedBox(
-                        width: 220,
-                        child: CustomButton(
-                          text: 'Verificar Status',
-                          onPressed: _loading
-                              ? null
-                              : () => _executeAction(
-                                    ds.verificarStatusRele,
-                                    'Relé está ON',
-                                    'Relé está OFF',
-                                  ),
-                          icon: Icons.info_outline,
-                          variant: ButtonVariant.outlined,
-                        ),
-                      ),
-                    ],
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: _loadingRegisteredRelays
+                          ? null
+                          : _loadRegisteredRelays,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Atualizar'),
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  if (_loading) const CircularProgressIndicator(),
-                  if (_statusMessage != null)
+                  if (_loadingRegisteredRelays)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_registeredRelays.isEmpty)
                     Text(
-                      _statusMessage!,
-                      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                      'Nenhum relé cadastrado para este dispositivo.',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    )
+                  else
+                    Column(
+                      children: _registeredRelays.map((r) {
+                        String machineName = 'Máquina #${r.maquinaId}';
+                        try {
+                          final m = _machines.firstWhere(
+                            (mm) => mm.id == r.maquinaId,
+                          );
+                          machineName = m.nome;
+                        } catch (_) {}
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Linha 1: Nome da máquina (acima)
+                                Row(
+                                  children: [
+                                    const Icon(Icons.memory, color: AppColors.primary, size: 18),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        machineName,
+                                        style: AppTextStyles.bodyMedium,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    _buildStatusChip(r.ip),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      tooltip: 'Editar configuração',
+                                      iconSize: 18,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                      onPressed: () => _showEditRelayDialog(r),
+                                      icon: const Icon(Icons.edit, color: AppColors.primary),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      tooltip: 'Remover relé',
+                                      iconSize: 18,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                      onPressed: () async {
+                                        final confirmed = await showDialog<bool>(
+                                          context: context,
+                                          builder: (ctx) {
+                                            return AlertDialog(
+                                              title: const Text('Remover relé'),
+                                              content: const Text('Tem certeza que deseja remover este relé?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.of(ctx).pop(false),
+                                                  child: const Text('Cancelar'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                                  child: const Text('Remover'),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+                                        if (confirmed == true) {
+                                          await _deleteRelayConfig(r);
+                                        }
+                                      },
+                                      icon: const Icon(Icons.delete_outline, color: AppColors.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                // Linha 2: IP (à esquerda) + botões pequenos (à direita)
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        r.ip,
+                                        style: AppTextStyles.bodySmall.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Ligar',
+                                      iconSize: 18,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                      onPressed: _loading
+                                          ? null
+                                          : () {
+                                              final dsItem = _buildDataSourceForIp(r.ip);
+                                              _executeAction(
+                                                dsItem.ligarRele,
+                                                'Relé ligado com sucesso',
+                                                'Falha ao ligar relé',
+                                              );
+                                              _checkRelayStatus(r.ip);
+                                            },
+                                      icon: const Icon(Icons.power, color: AppColors.primary),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      tooltip: 'Desligar',
+                                      iconSize: 18,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                      onPressed: _loading
+                                          ? null
+                                          : () {
+                                              final dsItem = _buildDataSourceForIp(r.ip);
+                                              _executeAction(
+                                                dsItem.desligarRele,
+                                                'Relé desligado com sucesso',
+                                                'Falha ao desligar relé',
+                                              );
+                                              _checkRelayStatus(r.ip);
+                                            },
+                                      icon: const Icon(Icons.power_settings_new, color: AppColors.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Ações por relé agora estão em cada card da lista de cadastrados
           ],
         ),
       ),
@@ -485,26 +901,49 @@ class IpTextInputFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) {
-    // Mantém apenas dígitos e ':'
-    final raw = newValue.text.replaceAll(RegExp(r'[^0-9:]'), '');
+    // Mantém apenas dígitos
+    final digitsOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
 
-    // Separa IP e porta (se houver)
-    final colonIndex = raw.indexOf(':');
-    final ipvRaw = colonIndex >= 0 ? raw.substring(0, colonIndex) : raw;
-    final portRaw = colonIndex >= 0 ? raw.substring(colonIndex + 1) : '';
+    // Limita ao máximo 10 dígitos (xxx.xxx.x.xxx => 3+3+1+3)
+    final digits = digitsOnly.length > 10
+        ? digitsOnly.substring(0, 10)
+        : digitsOnly;
 
-    // Constrói grupos de até 3 dígitos para IPv4 (máximo 4 grupos)
-    final digits = ipvRaw.replaceAll(RegExp(r'[^0-9]'), '');
-    final groups = <String>[];
-    for (int i = 0; i < digits.length && groups.length < 4; i += 3) {
-      final end = (i + 3 <= digits.length) ? i + 3 : digits.length;
-      groups.add(digits.substring(i, end));
+    // Monta grupos conforme a máscara: 3,3,1,3
+    String g1 = '';
+    String g2 = '';
+    String g3 = '';
+    String g4 = '';
+
+    if (digits.isNotEmpty) {
+      g1 = digits.substring(0, digits.length >= 3 ? 3 : digits.length);
     }
-    final ipvMasked = groups.join('.');
+    if (digits.length > g1.length) {
+      final start = g1.length;
+      final end =
+          start + (digits.length - start >= 3 ? 3 : digits.length - start);
+      g2 = digits.substring(start, end);
+    }
+    if (digits.length > g1.length + g2.length) {
+      final start = g1.length + g2.length;
+      final end =
+          start + (digits.length - start >= 1 ? 1 : digits.length - start);
+      g3 = digits.substring(start, end);
+    }
+    if (digits.length > g1.length + g2.length + g3.length) {
+      final start = g1.length + g2.length + g3.length;
+      final end =
+          start + (digits.length - start >= 3 ? 3 : digits.length - start);
+      g4 = digits.substring(start, end);
+    }
 
-    // Porta: mantém apenas dígitos
-    final portDigits = portRaw.replaceAll(RegExp(r'[^0-9]'), '');
-    final masked = portDigits.isNotEmpty ? '$ipvMasked:$portDigits' : ipvMasked;
+    // Junta com pontos somente os grupos existentes
+    final parts = <String>[];
+    if (g1.isNotEmpty) parts.add(g1);
+    if (g2.isNotEmpty) parts.add(g2);
+    if (g3.isNotEmpty) parts.add(g3);
+    if (g4.isNotEmpty) parts.add(g4);
+    final masked = parts.join('.');
 
     return TextEditingValue(
       text: masked,

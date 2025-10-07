@@ -5,10 +5,14 @@ import '../../domain/entities/regra.dart';
 import '../../domain/entities/processo_injecao.dart';
 import '../../domain/usecases/validar_carcaca_usecase.dart';
 import '../../domain/usecases/controlar_sonoff_usecase.dart';
+import '../../data/datasources/sonoff_datasource.dart';
 import '../../../machine/domain/usecases/get_current_machine_config.dart';
 import '../../../../core/services/device_info_service.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/errors/exceptions.dart';
+import '../../../../core/config/network_config.dart';
+import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import '../../data/datasources/vulcanizacao_remote_datasource.dart';
 import '../../data/models/pneu_vulcanizado_create_dto.dart';
 import '../../data/models/pneu_vulcanizado_response_dto.dart';
@@ -28,6 +32,7 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
   Timer? _timer;
   PneuVulcanizadoResponseDTO? _currentPneuVulcanizado;
   int? _currentProducaoId;
+  SonoffDataSource? _runtimeSonoffDs;
 
   InjectionBloc({
     ValidarCarcacaUseCase? validarCarcacaUseCase,
@@ -232,27 +237,41 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
         print('⚠️ [INJECTION] AVISO: VulcanizacaoDataSource ou GetCurrentUser não disponível');
       }
 
-      // 2. Ligar o relé do Sonoff
-      print('🔌 [INJECTION] Verificando controle do Sonoff...');
-      if (_controlarSonoffUseCase != null) {
-        print('✅ [INJECTION] ControlarSonoffUseCase disponível, tentando ligar relé...');
-        try {
-          final releStatus = await _controlarSonoffUseCase!.ligarRele();
-          print('📡 [INJECTION] Status do relé após tentativa de ligar: $releStatus');
-          
-          if (!releStatus) {
-            print('❌ [INJECTION] ERRO: Falha ao ligar o relé do Sonoff');
-            emit(const InjectionError(message: 'Erro ao ligar o relé do Sonoff'));
+      // 2. Ligar o relé do Sonoff (buscando IP por celularId)
+      print('🔌 [INJECTION] Preparando controle do Sonoff com IP por celularId...');
+      final ds = await _ensureRuntimeSonoffDataSource();
+      if (ds == null) {
+        // Fallback para usecase padrão, se existir
+        print('⚠️ [INJECTION] Nenhum relé configurado para este celular. Tentando fallback padrão...');
+        if (_controlarSonoffUseCase != null) {
+          try {
+            final releStatus = await _controlarSonoffUseCase!.ligarRele();
+            print('📡 [INJECTION] Status do relé (fallback) após tentativa de ligar: $releStatus');
+            if (!releStatus) {
+              emit(const InjectionError(message: 'Nenhum relé configurado para este celular e falha no fallback ao ligar relé'));
+              return;
+            }
+          } catch (releError) {
+            emit(InjectionError(message: 'Nenhum relé configurado para este celular. Erro ao tentar fallback: $releError'));
             return;
           }
-          print('✅ [INJECTION] Relé ligado com sucesso!');
-        } catch (releError) {
-          print('💥 [INJECTION] ERRO ao comunicar com Sonoff: $releError');
-          emit(InjectionError(message: 'Erro de comunicação com Sonoff: $releError'));
+        } else {
+          emit(const InjectionError(message: 'Nenhum relé configurado para este celular'));
           return;
         }
       } else {
-        print('⚠️ [INJECTION] AVISO: ControlarSonoffUseCase é null - relé não será controlado');
+        print('✅ [INJECTION] SonoffDataSource configurado com IP do dispositivo. Ligando relé...');
+        try {
+          final releStatus = await ds.ligarRele();
+          print('📡 [INJECTION] Status do relé (por IP) após ligar: $releStatus');
+          if (!releStatus) {
+            emit(const InjectionError(message: 'Erro ao ligar o relé do Sonoff (por IP)'));
+            return;
+          }
+        } catch (releError) {
+          emit(InjectionError(message: 'Erro de comunicação com Sonoff (por IP): $releError'));
+          return;
+        }
       }
 
       // 3. Iniciar timer de injeção
@@ -358,23 +377,25 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
     _currentPneuVulcanizado = null;
     print('🧹 [INJECTION] Referência do pneu vulcanizado limpa');
     
-    // Desligar o relé do Sonoff
-    if (_controlarSonoffUseCase != null) {
-      print('🔌 [INJECTION] Desligando relé do Sonoff...');
+    // Desligar o relé do Sonoff (usando IP por celularId quando disponível)
+    print('🔌 [INJECTION] Desligando relé do Sonoff com IP do dispositivo...');
+    final dsFinalizar = await _ensureRuntimeSonoffDataSource();
+    if (dsFinalizar != null) {
+      try {
+        final releStatus = await dsFinalizar.desligarRele();
+        print('📡 [INJECTION] Status do relé (por IP) após desligar: $releStatus');
+      } catch (e) {
+        print('💥 [INJECTION] ERRO ao desligar relé (por IP): $e');
+      }
+    } else if (_controlarSonoffUseCase != null) {
       try {
         final releStatus = await _controlarSonoffUseCase!.desligarRele();
-        print('📡 [INJECTION] Status do relé após desligar: $releStatus');
-        if (releStatus) {
-          print('✅ [INJECTION] Relé desligado com sucesso!');
-        } else {
-          print('⚠️ [INJECTION] AVISO: Falha ao desligar relé');
-        }
+        print('📡 [INJECTION] Status do relé (fallback) após desligar: $releStatus');
       } catch (e) {
-        // Log do erro mas não impede a finalização
-        print('💥 [INJECTION] ERRO ao desligar relé: $e');
+        print('💥 [INJECTION] ERRO ao desligar relé (fallback): $e');
       }
     } else {
-      print('⚠️ [INJECTION] AVISO: ControlarSonoffUseCase é null - relé não será desligado');
+      print('⚠️ [INJECTION] AVISO: Nenhuma fonte de controle do relé disponível para desligar');
     }
     
     final currentState = state;
@@ -391,13 +412,19 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
   void _onCancelarInjecaoAr(InjectionCancelarInjecaoAr event, Emitter<InjectionState> emit) async {
     _timer?.cancel();
     
-    // Desligar o relé do Sonoff
-    if (_controlarSonoffUseCase != null) {
+    // Desligar o relé do Sonoff (por IP quando disponível)
+    final dsCancelar = await _ensureRuntimeSonoffDataSource();
+    if (dsCancelar != null) {
+      try {
+        await dsCancelar.desligarRele();
+      } catch (e) {
+        print('Erro ao desligar relé (por IP): $e');
+      }
+    } else if (_controlarSonoffUseCase != null) {
       try {
         await _controlarSonoffUseCase.desligarRele();
       } catch (e) {
-        // Log do erro mas não impede o cancelamento
-        print('Erro ao desligar relé: $e');
+        print('Erro ao desligar relé (fallback): $e');
       }
     }
     
@@ -510,6 +537,60 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
         return (failure as HardwareFailure).message;
       default:
         return 'Erro desconhecido';
+    }
+  }
+
+  /// Busca o IP do relé configurado para o celular atual e prepara um DataSource em runtime
+  Future<SonoffDataSource?> _ensureRuntimeSonoffDataSource() async {
+    if (_runtimeSonoffDs != null) return _runtimeSonoffDs;
+
+    try {
+      final deviceId = await DeviceInfoService.instance.getDeviceId();
+      final dio = NetworkConfig.dio;
+      Response response;
+      try {
+        response = await dio.get(
+          ApiEndpoints.rele,
+          queryParameters: {
+            'celularId': deviceId,
+          },
+        );
+      } catch (e) {
+        print('❌ [INJECTION] Falha ao buscar relé por celularId: $e');
+        return null;
+      }
+
+      List items = [];
+      final data = response.data;
+      if (data is List) {
+        items = data;
+      } else if (data is Map && data['content'] is List) {
+        items = data['content'];
+      }
+
+      if (items.isEmpty) {
+        print('⚠️ [INJECTION] Nenhum relé configurado para celularId=$deviceId');
+        return null;
+      }
+
+      String? ip;
+      final first = items.first;
+      if (first is Map) {
+        ip = (first['ip'] ?? '').toString().trim();
+      }
+
+      if (ip == null || ip.isEmpty) {
+        print('⚠️ [INJECTION] IP do relé vazio para celularId=$deviceId');
+        return null;
+      }
+
+      final baseUrl = ip.startsWith('http://') || ip.startsWith('https://') ? ip : 'http://$ip';
+      _runtimeSonoffDs = SonoffDataSourceImpl(client: http.Client(), baseUrl: baseUrl);
+      print('✅ [INJECTION] DataSource do Sonoff preparado com baseUrl=$baseUrl');
+      return _runtimeSonoffDs;
+    } catch (e) {
+      print('❌ [INJECTION] Erro ao preparar DataSource runtime do Sonoff: $e');
+      return null;
     }
   }
 }
