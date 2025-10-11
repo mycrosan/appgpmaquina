@@ -44,4 +44,15 @@ abstract class VulcanizacaoRemoteDataSource {
     int page = 0,
     int size = 20,
   });
+
+  /// Atualiza campos de um pneu vulcanizado (ex.: número da etiqueta)
+  /// Throws [ServerException] em caso de erro na API
+  Future<PneuVulcanizadoResponseDTO> atualizarPneuVulcanizado(
+    int id, {
+    String? numeroEtiqueta,
+  });
+
+  /// Remove (soft delete) um pneu vulcanizado
+  /// Throws [ServerException] em caso de erro na API
+  Future<void> removerPneuVulcanizado(int id);
 }

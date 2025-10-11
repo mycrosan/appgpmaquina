@@ -369,4 +369,77 @@ class VulcanizacaoRemoteDataSourceImpl implements VulcanizacaoRemoteDataSource {
       );
     }
   }
+
+  @override
+  Future<PneuVulcanizadoResponseDTO> atualizarPneuVulcanizado(
+    int id, {
+    String? numeroEtiqueta,
+  }) async {
+    try {
+      developer.log(
+        '✏️ [VULCANIZACAO] Atualizando pneu vulcanizado ID: $id, numeroEtiqueta: ${numeroEtiqueta ?? '(sem alteração)'}',
+        name: 'VulcanizacaoRemoteDataSource',
+      );
+
+      final payload = <String, dynamic>{};
+      if (numeroEtiqueta != null) {
+        payload['numeroEtiqueta'] = numeroEtiqueta;
+      }
+
+      final response = await dio.put(
+        '$_baseEndpoint/$id',
+        data: payload,
+        options: Options(headers: _headers),
+      );
+
+      if (response.statusCode == 200) {
+        return PneuVulcanizadoResponseDTO.fromJson(
+          response.data as Map<String, dynamic>,
+        );
+      } else {
+        throw ServerException(
+          message: 'Erro ao atualizar pneu vulcanizado. Status: ${response.statusCode}',
+        );
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message;
+      throw ServerException(message: 'Erro do servidor ao atualizar: $msg');
+    } catch (e) {
+      throw ServerException(message: 'Erro inesperado ao atualizar pneu vulcanizado: $e');
+    }
+  }
+
+  @override
+  Future<void> removerPneuVulcanizado(int id) async {
+    try {
+      developer.log(
+        '🗑️ [VULCANIZACAO] Removendo (soft delete) pneu vulcanizado ID: $id',
+        name: 'VulcanizacaoRemoteDataSource',
+      );
+
+      final response = await dio.delete(
+        '$_baseEndpoint/$id',
+        options: Options(headers: _headers),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return;
+      }
+
+      // Alguns backends usam 202 ou até 500 para cenários específicos de soft delete
+      if (response.statusCode == 202 || response.statusCode == 500) {
+        developer.log('⚠️ Soft delete retornou status ${response.statusCode}, tratando como sucesso', name: 'VulcanizacaoRemoteDataSource');
+        return;
+      }
+
+      throw ServerException(
+        message: 'Erro ao remover pneu vulcanizado. Status: ${response.statusCode}',
+      );
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] ?? e.message;
+      throw ServerException(message: 'Erro do servidor ao remover: $msg');
+    } catch (e) {
+      throw ServerException(message: 'Erro inesperado ao remover pneu vulcanizado: $e');
+    }
+  }
 }

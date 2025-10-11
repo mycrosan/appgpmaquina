@@ -256,7 +256,22 @@ class _HistoryPageState extends State<HistoryPage> {
                               final item = _items[index];
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 12),
-                                child: _VulcanizadoCard(item: item),
+                                child: _VulcanizadoCard(
+                                  item: item,
+                                  onUpdated: (updated) {
+                                    final idx = _items.indexWhere((x) => x.id == updated.id);
+                                    if (idx >= 0) {
+                                      setState(() {
+                                        _items[idx] = updated;
+                                      });
+                                    }
+                                  },
+                                  onDeleted: (id) {
+                                    setState(() {
+                                      _items.removeWhere((x) => x.id == id);
+                                    });
+                                  },
+                                ),
                               );
                             }
 
@@ -482,8 +497,10 @@ class _HistoryPageState extends State<HistoryPage> {
 /// Card simples para exibir dados de um pneu vulcanizado
 class _VulcanizadoCard extends StatelessWidget {
   final PneuVulcanizadoResponseDTO item;
+  final void Function(PneuVulcanizadoResponseDTO updated) onUpdated;
+  final void Function(int id) onDeleted;
 
-  const _VulcanizadoCard({required this.item});
+  const _VulcanizadoCard({required this.item, required this.onUpdated, required this.onDeleted});
 
   Color _statusColor() {
     switch (item.status) {
@@ -523,6 +540,107 @@ class _VulcanizadoCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text('Vulcanizado #${item.id}', style: AppTextStyles.titleSmall),
               const Spacer(),
+              PopupMenuButton<String>(
+                tooltip: 'Ações',
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: ListTile(
+                      leading: Icon(Icons.edit),
+                      title: Text('Editar etiqueta'),
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: ListTile(
+                      leading: Icon(Icons.delete),
+                      title: Text('Excluir (soft delete)'),
+                    ),
+                  ),
+                ],
+                onSelected: (value) async {
+                  if (value == 'edit') {
+                    final controller = TextEditingController(text: item.numeroEtiqueta ?? '');
+                    final result = await showDialog<String>(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: const Text('Editar etiqueta'),
+                          content: TextField(
+                            controller: controller,
+                            decoration: const InputDecoration(
+                              hintText: 'Número da etiqueta',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('Cancelar'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+                              child: const Text('Salvar'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+
+                    if (result != null) {
+                      try {
+                        final ds = sl<VulcanizacaoRemoteDataSource>();
+                        final updated = await ds.atualizarPneuVulcanizado(item.id, numeroEtiqueta: result);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Etiqueta atualizada com sucesso')), 
+                        );
+                        onUpdated(updated);
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erro ao atualizar: $e')),
+                        );
+                      }
+                    }
+                  }
+
+                  if (value == 'delete') {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: const Text('Excluir registro'),
+                          content: const Text('Confirma a exclusão (soft delete) deste pneu vulcanizado?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Cancelar'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Excluir'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+
+                    if (confirmed == true) {
+                      try {
+                        final ds = sl<VulcanizacaoRemoteDataSource>();
+                        await ds.removerPneuVulcanizado(item.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Registro removido')), 
+                        );
+                        onDeleted(item.id);
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erro ao remover: $e')),
+                        );
+                      }
+                    }
+                  }
+                },
+              ),
               Chip(
                 label: Text(item.status.value),
                 backgroundColor: _statusColor().withOpacity(0.15),
