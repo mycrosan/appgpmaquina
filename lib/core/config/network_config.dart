@@ -91,21 +91,6 @@ class NetworkConfig {
     _initializeDio();
   }
 
-  /// Cria uma instância do Dio para Tasmota
-  static Dio createTasmotaDio() {
-    final config = AppConfig.instance;
-
-    return Dio(
-      BaseOptions(
-        baseUrl: config.tasmotaBaseUrl,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-        sendTimeout: const Duration(seconds: 10),
-        headers: {'Content-Type': 'application/json'},
-      ),
-    );
-  }
-
   /// Obtém o token de autenticação do armazenamento local
   static Future<AuthToken?> _getAuthToken() async {
     try {

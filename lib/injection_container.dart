@@ -172,7 +172,6 @@ Future<void> init() async {
     () => InjectionBloc(
       validarCarcacaUseCase: sl(),
       getCurrentMachineConfig: sl(),
-      controlarSonoffUseCase: sl(),
       vulcanizacaoDataSource: sl(),
       getCurrentUser: sl(),
     ),
@@ -185,14 +184,10 @@ Future<void> init() async {
       machineRepository: sl(),
     ),
   );
-  sl.registerLazySingleton(() => ControlarSonoffUseCase(repository: sl()));
 
   // Repositories
   sl.registerLazySingleton<ProducaoRepository>(
     () => ProducaoRepositoryImpl(remoteDataSource: sl()),
-  );
-  sl.registerLazySingleton<SonoffRepository>(
-    () => SonoffRepositoryImpl(dataSource: sl()),
   );
 
   // Data sources
@@ -202,14 +197,6 @@ Future<void> init() async {
       baseUrl: AppConfig.instance.apiBaseUrl,
     ),
   );
-  sl.registerLazySingleton<SonoffDataSource>(() {
-    // Não utilizamos mais SharedPreferences para IP do relé.
-    // Usa baseURL padrão do ambiente (pode ser ajustado em runtime quando necessário).
-    return SonoffDataSourceImpl(
-      client: sl(),
-      baseUrl: AppConfig.instance.tasmotaBaseUrl,
-    );
-  });
   sl.registerLazySingleton<VulcanizacaoRemoteDataSource>(
     () => VulcanizacaoRemoteDataSourceImpl(dio: sl()),
   );

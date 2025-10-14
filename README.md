@@ -22,3 +22,4 @@ fvm flutter run -d 11836f8
 
 - flutter build apk --debug — compila APK de debug.
 - flutter build apk --profile — compila APK de
+fvm flutter build appbundle --release

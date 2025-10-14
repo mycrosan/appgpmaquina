@@ -7,7 +7,6 @@ class AppConfig {
   static AppConfig get instance => _instance!;
 
   final String apiBaseUrl;
-  final String tasmotaBaseUrl;
   final bool isProduction;
   final String environment;
   final Duration connectionTimeout;
@@ -18,7 +17,6 @@ class AppConfig {
 
   AppConfig._({
     required this.apiBaseUrl,
-    required this.tasmotaBaseUrl,
     required this.isProduction,
     required this.environment,
     required this.connectionTimeout,
@@ -30,8 +28,33 @@ class AppConfig {
 
   /// Inicializa a configuração baseada no ambiente
   static void initialize({AppEnvironment? environment}) {
-    final env = environment ?? _detectEnvironment();
-    _instance = _createConfig(env);
+    // Permite override via --dart-define
+    const String envOverride = String.fromEnvironment(
+      'APP_ENV',
+      defaultValue: '',
+    );
+    const String serverIpOverride = String.fromEnvironment(
+      'SERVER_IP',
+      defaultValue: '',
+    );
+
+    final autoEnv = environment ?? _detectEnvironment();
+    final env = _resolveEnvironment(envOverride, autoEnv);
+
+    // Cria configuração base pelo ambiente
+    var config = _createConfig(env);
+
+    // Se houver override de SERVER_IP, aplica na base URL da API
+    if (serverIpOverride.isNotEmpty) {
+      try {
+        final uri = Uri.parse(serverIpOverride);
+        config = _createConfig(env, apiBaseOverride: serverIpOverride);
+      } catch (_) {
+        // Mantém configuração padrão caso o override seja inválido
+      }
+    }
+
+    _instance = config;
   }
 
   /// Detecta o ambiente automaticamente
@@ -43,12 +66,14 @@ class AppConfig {
   }
 
   /// Cria a configuração baseada no ambiente
-  static AppConfig _createConfig(AppEnvironment environment) {
+  static AppConfig _createConfig(
+    AppEnvironment environment, {
+    String? apiBaseOverride,
+  }) {
     switch (environment) {
       case AppEnvironment.development:
         return AppConfig._(
-          apiBaseUrl: 'http://192.168.0.178:8080/api',
-          tasmotaBaseUrl: 'http://192.168.0.178',
+          apiBaseUrl: apiBaseOverride ?? 'http://192.168.0.165:8080/api',
           isProduction: false,
           environment: 'development',
           connectionTimeout: const Duration(seconds: 30),
@@ -60,8 +85,7 @@ class AppConfig {
 
       case AppEnvironment.production:
         return AppConfig._(
-          apiBaseUrl: 'http://192.168.0.220:8080/gp/api',
-          tasmotaBaseUrl: 'http://192.168.0.220',
+          apiBaseUrl: apiBaseOverride ?? 'http://192.168.0.220:8080/gp/api',
           isProduction: true,
           environment: 'production',
           connectionTimeout: const Duration(seconds: 15),
@@ -73,8 +97,8 @@ class AppConfig {
 
       case AppEnvironment.staging:
         return AppConfig._(
-          apiBaseUrl: 'http://192.168.0.200:8080/staging/api',
-          tasmotaBaseUrl: 'http://192.168.0.200',
+          apiBaseUrl:
+              apiBaseOverride ?? 'http://192.168.0.200:8080/staging/api',
           isProduction: false,
           environment: 'staging',
           connectionTimeout: const Duration(seconds: 20),
@@ -83,6 +107,28 @@ class AppConfig {
           enableLogging: true,
           enableCrashReporting: true,
         );
+    }
+  }
+
+  /// Resolve o ambiente efetivo considerando override via --dart-define
+  static AppEnvironment _resolveEnvironment(
+    String envOverride,
+    AppEnvironment fallback,
+  ) {
+    switch (envOverride.toLowerCase()) {
+      case 'production':
+      case 'prod':
+      case 'prd':
+        return AppEnvironment.production;
+      case 'development':
+      case 'dev':
+      case 'local':
+        return AppEnvironment.development;
+      case 'staging':
+      case 'stage':
+        return AppEnvironment.staging;
+      default:
+        return fallback;
     }
   }
 
@@ -98,17 +144,11 @@ class AppConfig {
   String get machineConfigEndpoint => '$apiBaseUrl/machine-config';
   String get selectMatrizEndpoint => '$apiBaseUrl/machine-config/select-matriz';
 
-  /// URLs do Tasmota
-  String get tasmotaPowerOnCommand => '$tasmotaBaseUrl/cm?cmnd=Power%20On';
-  String get tasmotaPowerOffCommand => '$tasmotaBaseUrl/cm?cmnd=Power%20Off';
-  String get tasmotaStatusCommand => '$tasmotaBaseUrl/cm?cmnd=Status';
-
   /// Informações de debug
   Map<String, dynamic> get debugInfo => {
     'environment': environment,
     'isProduction': isProduction,
     'apiBaseUrl': apiBaseUrl,
-    'tasmotaBaseUrl': tasmotaBaseUrl,
     'enableLogging': enableLogging,
     'enableCrashReporting': enableCrashReporting,
     'connectionTimeout': connectionTimeout.inSeconds,
@@ -120,8 +160,7 @@ class AppConfig {
   bool get isValid {
     try {
       Uri.parse(apiBaseUrl);
-      Uri.parse(tasmotaBaseUrl);
-      return apiBaseUrl.isNotEmpty && tasmotaBaseUrl.isNotEmpty;
+      return apiBaseUrl.isNotEmpty;
     } catch (e) {
       return false;
     }
