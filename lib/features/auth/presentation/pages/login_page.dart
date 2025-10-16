@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../bloc/auth_bloc.dart';
 import '../../../../core/widgets/custom_button.dart';
 import '../../../../core/widgets/custom_text_field.dart';
@@ -22,12 +23,32 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _biometricEnabled = false;
+  String _appVersion = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion();
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      setState(() {
+        _appVersion = 'v${packageInfo.version}+${packageInfo.buildNumber}';
+      });
+    } catch (e) {
+      setState(() {
+        _appVersion = 'v1.0.0';
+      });
+    }
   }
 
   void _handleLogin() {
@@ -201,6 +222,18 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                       );
                     },
+                  ),
+                  
+                  // Versão do aplicativo
+                  const SizedBox(height: 32),
+                  Center(
+                    child: Text(
+                      _appVersion,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary.withOpacity(0.6),
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ],
               ),
