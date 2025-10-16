@@ -186,4 +186,15 @@ abstract class MachineRemoteDataSource {
   /// Throws [ServerException] se houver erro no servidor
   /// Throws [NetworkException] se houver erro de rede
   Future<void> removeAllActiveConfigsForDevice(String deviceId);
+
+  /// Seleciona uma matriz para a máquina
+  /// Throws [ServerException] se houver erro no servidor
+  /// Throws [NetworkException] se houver erro de rede
+  /// Throws [ValidationException] se os dados forem inválidos
+  Future<MachineConfigModel> selectMatrizForMachine(
+    String deviceId,
+    String userId,
+    int matrizId, {
+    int? registroMaquinaId,
+  });
 }

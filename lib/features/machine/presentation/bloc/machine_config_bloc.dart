@@ -308,6 +308,7 @@ class MachineConfigBloc extends Bloc<MachineConfigEvent, MachineConfigState> {
           deviceId: event.deviceId,
           userId: event.userId,
           matrizId: event.matrizId,
+          registroMaquinaId: event.registroMaquinaId,
         ),
       );
 

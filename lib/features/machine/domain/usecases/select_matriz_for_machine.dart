@@ -36,6 +36,7 @@ class SelectMatrizForMachine
         deviceId: params.deviceId,
         userId: params.userId,
         matrizId: params.matrizId,
+        registroMaquinaId: params.registroMaquinaId,
         matriz: matriz,
         configuredAt: DateTime.now(),
       );
@@ -51,13 +52,15 @@ class SelectMatrizParams extends Equatable {
   final String deviceId;
   final String userId;
   final int matrizId;
+  final int? registroMaquinaId;
 
   const SelectMatrizParams({
     required this.deviceId,
     required this.userId,
     required this.matrizId,
+    this.registroMaquinaId,
   });
 
   @override
-  List<Object> get props => [deviceId, userId, matrizId];
+  List<Object?> get props => [deviceId, userId, matrizId, registroMaquinaId];
 }

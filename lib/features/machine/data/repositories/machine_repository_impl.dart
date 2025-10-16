@@ -97,7 +97,8 @@ class MachineRepositoryImpl implements MachineRepository {
       final updatedConfig = await remoteDataSource.selectMatrizForMachine(
         config.deviceId, 
         config.userId, 
-        config.matrizId
+        config.matrizId,
+        registroMaquinaId: config.registroMaquinaId,
       );
       developer.log('✅ Configuração salva na API com sucesso', name: 'MachineRepository');
       developer.log('  - Config ID: ${updatedConfig.id}', name: 'MachineRepository');

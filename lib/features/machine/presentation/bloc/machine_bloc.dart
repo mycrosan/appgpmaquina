@@ -28,13 +28,13 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(seconds: 1));
 
-    // Simulated data for testing
+    // Simulated data for testing - usando IDs dinâmicos
     final carcacas = <Carcaca>[
       Carcaca(
-        id: 1,
-        codigo: 'CARC001',
-        matrizId: 1,
-        matrizNome: 'Matriz Teste',
+        id: DateTime.now().millisecondsSinceEpoch % 1000,
+        codigo: 'CARC${DateTime.now().millisecondsSinceEpoch % 1000}',
+        matrizId: DateTime.now().millisecondsSinceEpoch % 100,
+        matrizNome: 'Matriz Dinâmica ${DateTime.now().millisecondsSinceEpoch % 100}',
         createdAt: DateTime.now(),
       ),
     ];
@@ -51,13 +51,14 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(seconds: 1));
 
-    // Simulated data for testing
+    // Simulated data for testing - usando IDs dinâmicos
+    final matrizId = DateTime.now().millisecondsSinceEpoch % 1000;
     final matrizes = <Matriz>[
       Matriz(
-        id: 1,
-        descricao: 'Matriz de teste para pneus 205/55R16 Michelin Primacy',
-        nome: 'Matriz Teste 1',
-        codigo: 'MAT001',
+        id: matrizId,
+        descricao: 'Matriz dinâmica para pneus 205/55R16 Michelin Primacy',
+        nome: 'Matriz Dinâmica $matrizId',
+        codigo: 'MAT${matrizId.toString().padLeft(3, '0')}',
         isActive: true,
         canBeUsed: true,
       ),
@@ -75,12 +76,13 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(seconds: 1));
 
-    // Simulated data for testing
+    // Simulated data for testing - usando IDs dinâmicos
+    final matrizId = (event.id * 10) % 1000; // Gera matrizId baseado no ID da carcaça
     final carcaca = Carcaca(
       id: event.id,
       codigo: 'CARC${event.id.toString().padLeft(3, '0')}',
-      matrizId: 1,
-      matrizNome: 'Matriz ${event.id}',
+      matrizId: matrizId,
+      matrizNome: 'Matriz Dinâmica $matrizId',
       createdAt: DateTime.now(),
     );
 
@@ -118,13 +120,15 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(seconds: 1));
 
-    // Simulated search results
+    // Simulated search results - usando IDs dinâmicos
+    final searchId = event.searchTerm.hashCode.abs() % 1000;
+    final matrizId = searchId % 100;
     final carcacas = <Carcaca>[
       Carcaca(
-        id: 1,
-        codigo: 'CARC001',
-        matrizId: 1,
-        matrizNome: 'Carcaça encontrada: ${event.searchTerm}',
+        id: searchId,
+        codigo: 'CARC${searchId.toString().padLeft(3, '0')}',
+        matrizId: matrizId,
+        matrizNome: 'Carcaça encontrada: ${event.searchTerm} (Matriz $matrizId)',
         createdAt: DateTime.now(),
       ),
     ];
@@ -141,13 +145,14 @@ class MachineBloc extends Bloc<MachineEvent, MachineState> {
     // TODO: Implement actual use case call
     await Future.delayed(const Duration(seconds: 1));
 
-    // Simulated search results
+    // Simulated search results - usando IDs dinâmicos
+    final searchId = event.searchTerm.hashCode.abs() % 1000;
     final matrizes = <Matriz>[
       Matriz(
-        id: 1,
+        id: searchId,
         descricao: 'Matriz encontrada para: ${event.searchTerm}',
         nome: 'Matriz encontrada: ${event.searchTerm}',
-        codigo: 'MAT001',
+        codigo: 'MAT${searchId.toString().padLeft(3, '0')}',
         isActive: true,
         canBeUsed: true,
       ),

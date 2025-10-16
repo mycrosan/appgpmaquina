@@ -17,8 +17,8 @@ class GetCurrentDeviceMachine {
 
   /// Obtém a máquina atual configurada para este dispositivo
   ///
-  /// Retorna a última máquina configurada para o device ID atual,
-  /// ou null se nenhuma máquina foi configurada ainda
+  /// Busca através das configurações de máquina para encontrar
+  /// qual máquina está associada ao dispositivo atual
   Future<Either<Failure, RegistroMaquina?>> call() async {
     try {
       developer.log(
@@ -33,10 +33,10 @@ class GetCurrentDeviceMachine {
         name: 'GetCurrentDeviceMachine',
       );
 
-      // 2. Buscar todas as máquinas
-      final result = await repository.getAllMaquinas();
+      // 2. Buscar todas as máquinas disponíveis
+      final maquinasResult = await repository.getAllMaquinas();
 
-      return result.fold(
+      return maquinasResult.fold(
         (failure) {
           developer.log(
             '❌ Erro ao buscar máquinas: $failure',
@@ -50,39 +50,128 @@ class GetCurrentDeviceMachine {
             name: 'GetCurrentDeviceMachine',
           );
 
-          // 3. Filtrar máquinas que foram configuradas para este dispositivo
-          // Assumindo que existe um campo deviceId na entidade Maquina
-          // ou que podemos identificar através de algum outro campo
-
-          // Por enquanto, vamos retornar a primeira máquina como fallback
-          // TODO: Implementar lógica específica baseada em como as máquinas
-          // são associadas aos dispositivos no seu sistema
-
           if (maquinas.isEmpty) {
             developer.log(
-              'ℹ️ Nenhuma máquina encontrada',
+              '⚠️ Nenhuma máquina encontrada no sistema',
               name: 'GetCurrentDeviceMachine',
             );
             return const Right(null);
           }
 
-          // Retorna a primeira máquina por enquanto
-          // Esta lógica deve ser ajustada conforme a regra de negócio
-          final currentMachine = maquinas.first;
+          // 3. Tentar encontrar uma máquina através de configurações existentes
+          // Procurar por máquinas que tenham configurações ativas para este dispositivo
+          for (final maquina in maquinas) {
+            if (maquina.id != null) {
+              // Verificar se esta máquina tem configurações para este dispositivo
+              // Isso seria feito através de um método no repositório que busca
+              // configurações por registroMaquinaId e deviceId
+              
+              // Por enquanto, vamos usar uma heurística baseada no nome/descrição
+              // que pode conter informações do dispositivo
+              if (_isMachineAssociatedWithDevice(maquina, deviceId)) {
+                developer.log(
+                  '✅ Máquina encontrada através de associação: ${maquina.nome}',
+                  name: 'GetCurrentDeviceMachine',
+                );
+                return Right(maquina);
+              }
+            }
+          }
+
+          // 4. Se não encontrou através de configurações, aplicar lógica de prioridade
+          final prioritizedMachine = _selectMachineByPriority(maquinas);
+          
+          if (prioritizedMachine != null) {
+            developer.log(
+              '📌 Máquina selecionada por prioridade: ${prioritizedMachine.nome}',
+              name: 'GetCurrentDeviceMachine',
+            );
+            return Right(prioritizedMachine);
+          }
+
           developer.log(
-            '✅ Máquina atual encontrada: ${currentMachine.nome} (ID: ${currentMachine.id})',
+            '⚠️ Nenhuma máquina adequada encontrada',
             name: 'GetCurrentDeviceMachine',
           );
-
-          return Right(currentMachine);
+          return const Right(null);
         },
       );
     } catch (e) {
       developer.log(
-        '❌ Erro inesperado ao buscar máquina atual: $e',
+        '❌ Erro inesperado ao buscar máquina do dispositivo: $e',
         name: 'GetCurrentDeviceMachine',
       );
-      return Left(ServerFailure(message: 'Erro ao buscar máquina atual: $e'));
+      return Left(DeviceFailure(message: 'Erro ao buscar máquina: $e'));
     }
+  }
+
+  /// Verifica se uma máquina está associada ao dispositivo
+  /// através de informações na descrição, número de série, etc.
+  bool _isMachineAssociatedWithDevice(RegistroMaquina maquina, String deviceId) {
+    // Verificar se o deviceId está presente em campos da máquina
+    final searchFields = [
+      maquina.numeroSerie,
+      maquina.descricao,
+      maquina.observacoes,
+    ];
+
+    for (final field in searchFields) {
+      if (field != null && field.contains(deviceId)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// Seleciona uma máquina baseada em critérios de prioridade
+  RegistroMaquina? _selectMachineByPriority(List<RegistroMaquina> maquinas) {
+    // 1. Priorizar máquinas ativas e operacionais
+    final operationalMachines = maquinas.where((m) => m.isOperational).toList();
+    
+    if (operationalMachines.isNotEmpty) {
+      // 2. Priorizar máquinas com informações mais completas
+      operationalMachines.sort((a, b) {
+        int scoreA = _calculateMachineScore(a);
+        int scoreB = _calculateMachineScore(b);
+        return scoreB.compareTo(scoreA); // Ordem decrescente
+      });
+      
+      return operationalMachines.first;
+    }
+
+    // 3. Se não há máquinas operacionais, retornar a primeira ativa
+    final activeMachines = maquinas.where((m) => m.ativo).toList();
+    if (activeMachines.isNotEmpty) {
+      return activeMachines.first;
+    }
+
+    // 4. Como último recurso, retornar a primeira máquina disponível
+    return maquinas.isNotEmpty ? maquinas.first : null;
+  }
+
+  /// Calcula uma pontuação para a máquina baseada na completude das informações
+  int _calculateMachineScore(RegistroMaquina maquina) {
+    int score = 0;
+    
+    // Pontos por informações preenchidas
+    if (maquina.numeroSerie?.isNotEmpty == true) score += 2;
+    if (maquina.modelo?.isNotEmpty == true) score += 2;
+    if (maquina.fabricante?.isNotEmpty == true) score += 1;
+    if (maquina.localizacao?.isNotEmpty == true) score += 1;
+    if (maquina.responsavel?.isNotEmpty == true) score += 1;
+    
+    // Pontos por status
+    if (maquina.status == 'ATIVA') score += 3;
+    if (maquina.ativo) score += 2;
+    
+    // Pontos por data de criação (máquinas mais recentes têm prioridade)
+    if (maquina.criadoEm != null) {
+      final daysSinceCreation = DateTime.now().difference(maquina.criadoEm!).inDays;
+      if (daysSinceCreation < 30) score += 2; // Máquinas criadas nos últimos 30 dias
+      else if (daysSinceCreation < 90) score += 1; // Máquinas criadas nos últimos 90 dias
+    }
+    
+    return score;
   }
 }

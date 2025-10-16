@@ -106,25 +106,45 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
   void _onStartProcess(InjectionStartProcess event, Emitter<InjectionState> emit) async {
     emit(InjectionLoading());
     try {
-      // TODO: Implement process start logic
-      // For now, create a dummy process
-      final dummyProcess = ProcessoInjecao(
-        id: 'dummy-1',
-        carcacaId: 1,
-        carcacaCodigo: 'DUMMY',
-        regraId: 1,
-        matrizId: 1,
-        matrizNome: 'Matriz Teste',
+      // Obter usuário atual
+      int userId = 1; // Fallback
+      String userName = 'Usuário Desconhecido';
+      
+      if (_getCurrentUser != null) {
+        final userResult = await _getCurrentUser!.call();
+        userResult.fold(
+          (failure) {
+            print('⚠️ [INJECTION] Erro ao obter usuário atual: ${failure.toString()}');
+            // Mantém fallback
+          },
+          (user) {
+             userId = user.id;
+             userName = user.name ?? 'Usuário Desconhecido';
+           },
+        );
+      }
+
+      // Buscar carcaça por código para obter carcacaId e matrizId
+      // TODO: Implementar busca real da carcaça
+      // Por enquanto, usar dados do evento
+      final processo = ProcessoInjecao(
+        id: 'proc-${DateTime.now().millisecondsSinceEpoch}',
+        carcacaId: 0, // Será definido quando implementarmos busca de carcaça
+        carcacaCodigo: event.carcacaCodigo,
+        regraId: event.regraId,
+        matrizId: 0, // Será obtido da carcaça
+        matrizNome: 'Matriz a definir',
         status: StatusProcesso.injetando,
         tempoTotal: 3600,
-        pressaoInicial: 0.0,
-        pressaoAtual: 0.0,
+        pressaoInicial: event.pressaoInicial,
+        pressaoAtual: event.pressaoInicial,
         pressaoAlvo: 100.0,
         iniciadoEm: DateTime.now(),
-        userId: 1,
-        userName: 'Usuário Teste',
+        userId: userId,
+        userName: userName,
       );
-      emit(InjectionProcessStarted(processo: dummyProcess));
+      
+      emit(InjectionProcessStarted(processo: processo));
     } catch (e) {
       emit(InjectionError(message: e.toString()));
     }
@@ -437,24 +457,43 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
   void _onResumeProcess(InjectionResumeProcess event, Emitter<InjectionState> emit) async {
     emit(InjectionLoading());
     try {
-      // TODO: Implement process resume logic
-      final dummyProcess = ProcessoInjecao(
-        id: 'dummy-1',
-        carcacaId: 1,
-        carcacaCodigo: 'DUMMY',
-        regraId: 1,
-        matrizId: 1,
-        matrizNome: 'Matriz Teste',
+      // Obter usuário atual
+      int userId = 1; // Fallback
+      String userName = 'Usuário Desconhecido';
+      
+      if (_getCurrentUser != null) {
+        final userResult = await _getCurrentUser!.call();
+        userResult.fold(
+          (failure) {
+            print('⚠️ [INJECTION] Erro ao obter usuário atual: ${failure.toString()}');
+            // Mantém fallback
+          },
+          (user) {
+            userId = user.id;
+            userName = user.name ?? 'Usuário Desconhecido';
+          },
+        );
+      }
+
+      // TODO: Implementar lógica real de retomada de processo
+      // Por enquanto, criar processo genérico
+      final processo = ProcessoInjecao(
+         id: 'resume-${DateTime.now().millisecondsSinceEpoch}',
+        carcacaId: 0, // Será obtido do processo existente
+        carcacaCodigo: 'RETOMADA',
+        regraId: 0, // Será obtido do processo existente
+        matrizId: 0, // Será obtido do processo existente
+        matrizNome: 'Matriz a definir',
         status: StatusProcesso.injetando,
         tempoTotal: 3600,
         pressaoInicial: 0.0,
         pressaoAtual: 50.0,
         pressaoAlvo: 100.0,
         iniciadoEm: DateTime.now().subtract(const Duration(minutes: 30)),
-        userId: 1,
-        userName: 'Usuário Teste',
+        userId: userId,
+        userName: userName,
       );
-      emit(InjectionProcessResumed(processo: dummyProcess));
+      emit(InjectionProcessResumed(processo: processo));
     } catch (e) {
       emit(InjectionError(message: e.toString()));
     }
@@ -463,25 +502,44 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
   void _onCancelProcess(InjectionCancelProcess event, Emitter<InjectionState> emit) async {
     emit(InjectionLoading());
     try {
-      // TODO: Implement process cancel logic
-      final dummyProcess = ProcessoInjecao(
-        id: 'dummy-1',
-        carcacaId: 1,
-        carcacaCodigo: 'DUMMY',
-        regraId: 1,
-        matrizId: 1,
-        matrizNome: 'Matriz Teste',
+      // Obter usuário atual
+      int userId = 1; // Fallback
+      String userName = 'Usuário Desconhecido';
+      
+      if (_getCurrentUser != null) {
+        final userResult = await _getCurrentUser!.call();
+        userResult.fold(
+          (failure) {
+            print('⚠️ [INJECTION] Erro ao obter usuário atual: ${failure.toString()}');
+            // Mantém fallback
+          },
+          (user) {
+            userId = user.id;
+            userName = user.name ?? 'Usuário Desconhecido';
+          },
+        );
+      }
+
+      // TODO: Implementar lógica real de cancelamento de processo
+      // Por enquanto, criar processo genérico cancelado
+      final processo = ProcessoInjecao(
+        id: 'cancel-${DateTime.now().millisecondsSinceEpoch}',
+        carcacaId: 0, // Será obtido do processo existente
+        carcacaCodigo: 'CANCELADO',
+        regraId: 0, // Será obtido do processo existente
+        matrizId: 0, // Será obtido do processo existente
+        matrizNome: 'Matriz a definir',
         status: StatusProcesso.cancelado,
         tempoTotal: 3600,
         pressaoInicial: 0.0,
         pressaoAtual: 50.0,
         pressaoAlvo: 100.0,
         iniciadoEm: DateTime.now().subtract(const Duration(minutes: 30)),
-        userId: 1,
-        userName: 'Usuário Teste',
-        motivoErro: 'Cancelado pelo usuário',
+        userId: userId,
+        userName: userName,
+        motivoErro: event.motivo ?? 'Cancelado pelo usuário',
       );
-      emit(InjectionProcessCanceled(processo: dummyProcess));
+      emit(InjectionProcessCanceled(processo: processo));
     } catch (e) {
       emit(InjectionError(message: e.toString()));
     }
@@ -490,14 +548,33 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
   void _onFinishProcess(InjectionFinishProcess event, Emitter<InjectionState> emit) async {
     emit(InjectionLoading());
     try {
-      // TODO: Implement process finish logic
-      final dummyProcess = ProcessoInjecao(
-        id: 'dummy-1',
-        carcacaId: 1,
-        carcacaCodigo: 'DUMMY',
-        regraId: 1,
-        matrizId: 1,
-        matrizNome: 'Matriz Teste',
+      // Obter usuário atual
+      int userId = 1; // Fallback
+      String userName = 'Usuário Desconhecido';
+      
+      if (_getCurrentUser != null) {
+        final userResult = await _getCurrentUser!.call();
+        userResult.fold(
+          (failure) {
+            print('⚠️ [INJECTION] Erro ao obter usuário atual: ${failure.toString()}');
+            // Mantém fallback
+          },
+          (user) {
+            userId = user.id;
+            userName = user.name ?? 'Usuário Desconhecido';
+          },
+        );
+      }
+
+      // TODO: Implementar lógica real de finalização de processo
+      // Por enquanto, criar processo genérico finalizado
+      final processo = ProcessoInjecao(
+        id: 'finish-${DateTime.now().millisecondsSinceEpoch}',
+        carcacaId: 0, // Será obtido do processo existente
+        carcacaCodigo: 'FINALIZADO',
+        regraId: 0, // Será obtido do processo existente
+        matrizId: 0, // Será obtido do processo existente
+        matrizNome: 'Matriz a definir',
         status: StatusProcesso.concluido,
         tempoTotal: 3600,
         pressaoInicial: 0.0,
@@ -505,10 +582,10 @@ class InjectionBloc extends Bloc<InjectionEvent, InjectionState> {
         pressaoAlvo: 100.0,
         iniciadoEm: DateTime.now().subtract(const Duration(hours: 1)),
         finalizadoEm: DateTime.now(),
-        userId: 1,
-        userName: 'Usuário Teste',
+        userId: userId,
+        userName: userName,
       );
-      emit(InjectionProcessFinished(processo: dummyProcess));
+      emit(InjectionProcessFinished(processo: processo));
     } catch (e) {
       emit(InjectionError(message: e.toString()));
     }

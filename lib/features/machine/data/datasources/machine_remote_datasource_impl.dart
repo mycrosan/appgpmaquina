@@ -399,12 +399,13 @@ class MachineRemoteDataSourceImpl {
       throw NetworkException(message: 'Network error: $e');
     }
   }
-
+@override
   Future<MachineConfigModel> selectMatrizForMachine(
     String deviceId,
     String userId,
-    int matrizId,
-  ) async {
+    int matrizId, {
+    int? registroMaquinaId,
+  }) async {
     developer.log(
       '💾 Iniciando seleção de matriz para máquina',
       name: 'MachineRemoteDataSource',
@@ -412,21 +413,41 @@ class MachineRemoteDataSourceImpl {
     developer.log('  - Device ID: $deviceId', name: 'MachineRemoteDataSource');
     developer.log('  - User ID: $userId', name: 'MachineRemoteDataSource');
     developer.log('  - Matriz ID: $matrizId', name: 'MachineRemoteDataSource');
+    developer.log('  - API Base URL: ${AppConfig.instance.apiBaseUrl}', name: 'MachineRemoteDataSource');
 
     try {
+      // Verificar autenticação antes de fazer qualquer requisição
+      final headers = await _getAuthHeaders();
+      developer.log(
+        '🔐 Headers preparados: ${headers.keys.join(', ')}',
+        name: 'MachineRemoteDataSource',
+      );
+      
       // Primeiro, buscar a matriz para validar se existe e está ativa
       developer.log(
         '🔍 Buscando dados da matriz ID: $matrizId',
         name: 'MachineRemoteDataSource',
       );
+      final matrizUrl = '${AppConfig.instance.matrizEndpoint}/$matrizId';
+      developer.log('🔗 URL da matriz: $matrizUrl', name: 'MachineRemoteDataSource');
+      
       final matrizResponse = await client.get(
-        Uri.parse('${AppConfig.instance.matrizEndpoint}/$matrizId'),
-        headers: await _getAuthHeaders(),
+        Uri.parse(matrizUrl),
+        headers: headers,
+      );
+
+      developer.log(
+        '📥 Resposta da matriz - Status: ${matrizResponse.statusCode}',
+        name: 'MachineRemoteDataSource',
       );
 
       if (matrizResponse.statusCode != 200) {
         developer.log(
           '❌ Matriz não encontrada ou erro ao buscar: ${matrizResponse.statusCode}',
+          name: 'MachineRemoteDataSource',
+        );
+        developer.log(
+          '❌ Resposta: ${matrizResponse.body}',
           name: 'MachineRemoteDataSource',
         );
         throw ServerException(message: 'Matriz não encontrada');
@@ -451,10 +472,10 @@ class MachineRemoteDataSourceImpl {
       );
 
       // Criar DTO para configuração de máquina usando o endpoint correto
-      final createDto = ConfiguracaoMaquinaCreateDTO(
-        maquinaId: int.tryParse(deviceId) ?? 1, // Converter deviceId para int
-        matrizId: matrizId,
-        celularId: deviceId, // Usar deviceId como celularId
+        final createDto = ConfiguracaoMaquinaCreateDTO(
+          maquinaId: registroMaquinaId ?? (int.tryParse(deviceId) ?? 1), // Usa registroMaquinaId se disponível
+          matrizId: matrizId,
+          celularId: deviceId,
         descricao: 'Configuração de matriz para máquina: ${matriz.nome}',
         atributos: jsonEncode({
           'matriz_selecionada': matrizId,
@@ -469,9 +490,12 @@ class MachineRemoteDataSourceImpl {
       );
 
       // Usar o endpoint correto POST /configuracao-maquina
+      final configUrl = '${AppConfig.instance.apiBaseUrl}/configuracao-maquina';
+      developer.log('🔗 URL da configuração: $configUrl', name: 'MachineRemoteDataSource');
+      
       final configResponse = await client.post(
-        Uri.parse('${AppConfig.instance.apiBaseUrl}/configuracao-maquina'),
-        headers: await _getAuthHeaders(),
+        Uri.parse(configUrl),
+        headers: headers,
         body: jsonEncode(createDto.toJson()),
       );
 
@@ -502,6 +526,7 @@ class MachineRemoteDataSourceImpl {
           responseDto,
           deviceId: deviceId,
           userId: userId,
+          registroMaquinaId: registroMaquinaId,
           matriz: matriz,
         );
 

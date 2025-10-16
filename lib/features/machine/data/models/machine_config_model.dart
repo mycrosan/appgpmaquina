@@ -11,6 +11,7 @@ class MachineConfigModel extends MachineConfig {
     required super.deviceId,
     required super.userId,
     required super.matrizId,
+    super.registroMaquinaId,
     super.matriz,
     required super.configuredAt,
     super.updatedAt,
@@ -24,6 +25,7 @@ class MachineConfigModel extends MachineConfig {
       deviceId: json['device_id'] as String,
       userId: json['user_id'] as String,
       matrizId: json['matriz_id'] as int,
+      registroMaquinaId: json['registro_maquina_id'] as int?,
       matriz: json['matriz'] != null
           ? MatrizModel.fromJson(json['matriz'] as Map<String, dynamic>)
           : null,
@@ -42,6 +44,7 @@ class MachineConfigModel extends MachineConfig {
       'device_id': deviceId,
       'user_id': userId,
       'matriz_id': matrizId,
+      'registro_maquina_id': registroMaquinaId,
       'matriz': matriz != null
           ? MatrizModel.fromEntity(matriz!).toJson()
           : null,
@@ -58,6 +61,7 @@ class MachineConfigModel extends MachineConfig {
       deviceId: config.deviceId,
       userId: config.userId,
       matrizId: config.matrizId,
+      registroMaquinaId: config.registroMaquinaId,
       matriz: config.matriz,
       configuredAt: config.configuredAt,
       updatedAt: config.updatedAt,
@@ -70,6 +74,7 @@ class MachineConfigModel extends MachineConfig {
     ConfiguracaoMaquinaResponseDTO dto, {
     required String deviceId,
     required String userId,
+    int? registroMaquinaId,
     Matriz? matriz,
   }) {
     return MachineConfigModel(
@@ -77,6 +82,7 @@ class MachineConfigModel extends MachineConfig {
       deviceId: deviceId,
       userId: userId,
       matrizId: dto.matrizId ?? 0,
+      registroMaquinaId: registroMaquinaId,
       matriz: matriz,
       configuredAt: dto.dtCreate != null
           ? DateTime.parse(dto.dtCreate!)
@@ -93,6 +99,7 @@ class MachineConfigModel extends MachineConfig {
     String? deviceId,
     String? userId,
     int? matrizId,
+    int? registroMaquinaId,
     Matriz? matriz,
     DateTime? configuredAt,
     DateTime? updatedAt,
@@ -103,6 +110,7 @@ class MachineConfigModel extends MachineConfig {
       deviceId: deviceId ?? this.deviceId,
       userId: userId ?? this.userId,
       matrizId: matrizId ?? this.matrizId,
+      registroMaquinaId: registroMaquinaId ?? this.registroMaquinaId,
       matriz: matriz ?? this.matriz,
       configuredAt: configuredAt ?? this.configuredAt,
       updatedAt: updatedAt ?? this.updatedAt,

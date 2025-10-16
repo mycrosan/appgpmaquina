@@ -71,8 +71,19 @@ class _HomePageState extends State<HomePage> {
           updatedState.currentMachine != null) {
         registroMaquinaId = updatedState.currentMachine!.id;
       } else {
-        // Fallback: usar ID 1 se não conseguir obter uma máquina
-        registroMaquinaId = 1;
+        // Se não conseguir obter uma máquina, mostrar erro ao usuário
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Nenhuma máquina encontrada para este dispositivo. Configure uma máquina primeiro.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          // Navegar para a página de configuração de máquinas
+          Navigator.of(context).pushNamed('/registro-maquina');
+          return;
+        }
       }
     }
 

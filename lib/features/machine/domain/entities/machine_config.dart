@@ -9,6 +9,7 @@ class MachineConfig extends Equatable {
   final String deviceId; // ID único do dispositivo/máquina
   final String userId; // ID do usuário
   final int matrizId; // ID da matriz selecionada
+  final int? registroMaquinaId; // ID do registro da máquina
   final Matriz? matriz; // Dados completos da matriz (opcional)
   final DateTime configuredAt; // Quando foi configurada
   final DateTime? updatedAt; // Última atualização
@@ -19,6 +20,7 @@ class MachineConfig extends Equatable {
     required this.deviceId,
     required this.userId,
     required this.matrizId,
+    this.registroMaquinaId,
     this.matriz,
     required this.configuredAt,
     this.updatedAt,
@@ -47,6 +49,7 @@ class MachineConfig extends Equatable {
     String? deviceId,
     String? userId,
     int? matrizId,
+    int? registroMaquinaId,
     Matriz? matriz,
     DateTime? configuredAt,
     DateTime? updatedAt,
@@ -57,6 +60,7 @@ class MachineConfig extends Equatable {
       deviceId: deviceId ?? this.deviceId,
       userId: userId ?? this.userId,
       matrizId: matrizId ?? this.matrizId,
+      registroMaquinaId: registroMaquinaId ?? this.registroMaquinaId,
       matriz: matriz ?? this.matriz,
       configuredAt: configuredAt ?? this.configuredAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -70,6 +74,7 @@ class MachineConfig extends Equatable {
         deviceId,
         userId,
         matrizId,
+        registroMaquinaId,
         matriz,
         configuredAt,
         updatedAt,

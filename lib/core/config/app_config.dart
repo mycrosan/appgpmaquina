@@ -73,7 +73,7 @@ class AppConfig {
     switch (environment) {
       case AppEnvironment.development:
         return AppConfig._(
-          apiBaseUrl: apiBaseOverride ?? 'http://192.168.0.165:8080/api',
+          apiBaseUrl: apiBaseOverride ?? 'http://192.168.0.164:8080/api',
           isProduction: false,
           environment: 'development',
           connectionTimeout: const Duration(seconds: 30),
